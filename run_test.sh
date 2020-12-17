@@ -31,3 +31,5 @@ echo ""
 echo $OUTPUT
 
 java -jar tester/tester.jar -exec $EXEC -seed $BASE+$CASE -novis -noSummary -timeLimit $TL -threads $THREADS -saveScores $OUTPUT/scores.txt -saveAll $OUTPUT/io > /dev/null
+
+python ./show_stats.py $OUTPUT
