@@ -3,7 +3,7 @@
 set -eu
 
 TL=7500 # msec
-CASE=1000
+CASE=200
 
 THREADS=6
 BASE=1000000
