@@ -11,6 +11,13 @@ BASE=1000000
 SOURCE=./submission.cpp
 EXEC=./submission
 
+while getopts "n:" "flag"; do
+    case $flag in
+        n) CASE=${OPTARG}
+    esac
+done
+shift $((OPTIND-1))
+
 OUTPUT=/tmp/MM/$(date '+%Y%m%d-%H%M%S')
 [ -f "$OUTPUT" ] && { echo "$OUTPUT exists"; exit 1; }
 
