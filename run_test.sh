@@ -40,4 +40,6 @@ echo $OUTPUT
 
 java -jar tester/tester.jar -exec $EXEC -seed $BASE+$CASE -novis -noSummary -timeLimit $TL -threads $THREADS -saveScores $OUTPUT/scores.txt -saveAll $OUTPUT/io > /dev/null
 
+echo "end_time: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a $OUTPUT/info.yml
+
 python ./show_stats.py $OUTPUT
