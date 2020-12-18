@@ -27,6 +27,7 @@ mkdir -p "$OUTPUT"
 
 echo "source_file: ${SOURCE}" | tee -a $OUTPUT/info.yml
 echo "source_md5sum: $(md5sum "$SOURCE" | cut -d ' ' -f 1)" | tee -a $OUTPUT/info.yml
+echo "executable_md5sum: $(md5sum "$EXEC" | cut -d ' ' -f 1)" | tee -a $OUTPUT/info.yml
 echo "executable: ${EXEC}" | tee -a $OUTPUT/info.yml
 echo "threads: ${THREADS}" | tee -a $OUTPUT/info.yml
 echo "time_limit: ${TL}" | tee -a $OUTPUT/info.yml

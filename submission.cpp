@@ -145,10 +145,15 @@ class Command {
 class Solver {
     Params params;
 
+    int grid_unknown_count = 0;
+    int grid_bomb_count = 0;
+    int score_uncover = 0;
+    int score_mine_hit = 0;
+
     vector<vector<Cell>> judge_grid;
     vector<vector<Cell>> grid;
 
-    long runtime;
+    long runtime = 0;
     vector<Command> next_commands;
 
     int count_safe_neighbors[MAX_N][MAX_N];
@@ -158,6 +163,11 @@ class Solver {
 
     bool with_in(int r1, int c1, int r2, int c2, int D) {
         return (r1 - r2) * (r1 - r2) + (c1 - c2) * (c1 - c2) <= D;
+    }
+
+    double calc_uncover_ratio() {
+        const int all = params.N * params.N - params.M;
+        return (double)score_uncover/(double)all;
     }
 
     public:
@@ -180,7 +190,63 @@ class Solver {
             }
         }
 
+        grid_unknown_count = params.N * params.N;
+
         judge_update_value(row, col, 0, 0);
+    }
+
+    Command choose_minimum_prob() {
+        vector<pair<int, int>> probs[MAX_N][MAX_N];
+        REP(r, params.N) REP(c, params.N) {
+            if (!grid[r][c].is_value()) {
+                continue;
+            }
+            const int total = unknown_neighbors[r][c].size();
+            const int rest = grid[r][c].get_value() - count_bomb_neighbors[r][c];
+            for(auto np : unknown_neighbors[r][c]) {
+                int nr, nc;
+                tie(nr, nc) = np;
+                probs[nr][nc].push_back(make_pair(rest, total));
+            }
+        }
+        int rest = params.M - grid_bomb_count;
+        int all = grid_unknown_count;
+        double default_prob = (double)rest/(double)all;
+
+        int best_r = -1, best_c = -1;
+        double best_prob = default_prob;
+
+        REP(r, params.N) REP(c, params.N) {
+            if (!probs[r][c].empty()) {
+                double sum = 0;
+                for(auto p : probs[r][c]) {
+                    int a, b;
+                    tie(a, b) = p;
+                    sum += (double)a/(double)b;
+                }
+                const double prob = sum / (double)probs[r][c].size();
+                if (prob <= best_prob) {
+                    best_r = r;
+                    best_c = c;
+                    best_prob = prob;
+                }
+            }
+        }
+        cerr << best_r << " " << best_c << " " << best_prob << endl;
+        if (best_r != -1) {
+            return Command::open(best_r, best_c);
+        }
+        return Command::stop();
+    }
+
+    Command choose_random_unknown() {
+        while(true) {
+            int r = rand() % params.N;
+            int c = rand() % params.N;
+            if (grid[r][c].is_hidden() && judge_grid[r][c].is_hidden()) {
+                return Command::open(r, c);
+            }
+        }
     }
 
     Command decide_next_command() {
@@ -188,6 +254,28 @@ class Solver {
             Command next = next_commands.back();
             next_commands.pop_back();
             return next;
+        }
+
+        if (grid_bomb_count == params.M) {
+            REP(r, params.N) REP(c, params.N) {
+                if (grid[r][c].is_hidden() && judge_grid[r][c].is_hidden()) {
+                    return Command::open(r, c);
+                }
+            }
+        }
+
+        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
+            Command next = choose_minimum_prob();
+            if (!next.is_stop()) {
+                return next;
+            }
+        }
+
+        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
+            Command next = choose_random_unknown();
+            if (!next.is_stop()) {
+                return next;
+            }
         }
 
         return Command::stop();
@@ -200,6 +288,7 @@ class Solver {
         const int safe_value = neighbors[row][col].size() - value;
         assert(count_safe_neighbors[row][col] <= safe_value);
         assert(count_bomb_neighbors[row][col] <= value);
+
         if (unknown_neighbors[row][col].empty()) {
             // do nothing.
         } else if (count_safe_neighbors[row][col] == safe_value) {
@@ -226,6 +315,7 @@ class Solver {
     void update_safe(int row, int col) {
         assert(grid[row][col].is_hidden());
         grid[row][col].set_safe();
+        grid_unknown_count -= 1;
 
         if (judge_grid[row][col].is_hidden()) {
             next_commands.push_back(Command::open(row, col));
@@ -246,6 +336,8 @@ class Solver {
     void update_bomb(int row, int col) {
         assert(grid[row][col].is_hidden());
         grid[row][col].set_bomb();
+        grid_unknown_count -= 1;
+        grid_bomb_count += 1;
 
         if (judge_grid[row][col].is_hidden()) {
             next_commands.push_back(Command::flag(row, col));
@@ -270,6 +362,7 @@ class Solver {
 
         assert(grid[row][col].is_safe());
         grid[row][col].set_value(value);
+        // no "grid_unknown_count -= 1" because it's updated in update_safe
 
         fire_update(row, col);
     }
@@ -278,6 +371,7 @@ class Solver {
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_value(value);
         this->runtime = runtime;
+        this->score_uncover += 1;
 
         if (grid[row][col].is_hidden() || grid[row][col].is_safe()) {
             update_value(row, col, value);
@@ -290,6 +384,7 @@ class Solver {
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_bomb();
         this->runtime = runtime;
+        this->score_mine_hit += 1;
 
         if (grid[row][col].is_hidden()) {
             update_bomb(row, col);
