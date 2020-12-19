@@ -393,41 +393,41 @@ class Solver {
         }
 
         {
-            for(int i : p2c[index]) {
-                count_zero[i] ++;
-            }
-            bool violate = false;
-            for(int i : p2c[index]) {
-                if (count_zero[i] > constraints[i].max_zero()) {
-                    violate = true;
+            int violate = p2c[index].size();
+            for (int i = 0; i < p2c[index].size(); i++) {
+                const int x = p2c[index][i];
+                if (++count_zero[x] > constraints[x].max_zero()) {
+                    violate = i;
                     break;
                 }
             }
-            is_mine[index] = false;
-            if (!violate) {
+            if (violate == p2c[index].size()) {
+                is_mine[index] = false;
                 dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+                violate--;
             }
-            for(int i : p2c[index]) {
-                count_zero[i] --;
+            for (int i = 0; i <= violate; i++) {
+                const int x = p2c[index][i];
+                --count_zero[x];
             }
         }
         {
-            for(int i : p2c[index]) {
-                count_one[i] ++;
-            }
-            bool violate = false;
-            for(int i : p2c[index]) {
-                if (count_one[i] > constraints[i].max_one()) {
-                    violate = true;
+            int violate = p2c[index].size();
+            for (int i = 0; i < p2c[index].size(); i++) {
+                const int x = p2c[index][i];
+                if (++count_one[x] > constraints[x].max_one()) {
+                    violate = i;
                     break;
                 }
             }
-            is_mine[index] = true;
-            if (!violate) {
+            if (violate == p2c[index].size()) {
+                is_mine[index] = true;
                 dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+                violate--;
             }
-            for(int i : p2c[index]) {
-                count_one[i] --;
+            for (int i = 0; i <= violate; i++) {
+                const int x = p2c[index][i];
+                --count_one[x];
             }
         }
     }
