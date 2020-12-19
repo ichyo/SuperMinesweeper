@@ -6,12 +6,104 @@
 #include <cassert>
 #include <cstring>
 #include <tuple>
+#include <algorithm>
+
+#ifdef LOCAL_TEST
+#include "./dbg.hpp"
+#define MAX_RUNTIME 7500
+#else
+#define dbg(...)
+#define MAX_RUNTIME 10000
+#endif
 
 #define REP(i,n) for(int i = 0; i < (n); ++i)
 
 using namespace std;
 
 const int MAX_N = 50;
+
+using Pos = pair<int, int>;
+
+struct Constraint {
+    int value;
+    set<Pos> positions;
+
+    Constraint(int value_, set<Pos> positions_): value(value_), positions(positions_) {}
+
+    int max_one() const {
+        return value;
+    }
+    int max_zero() const {
+        return positions.size() - value;
+    }
+};
+
+using Constraints = vector<Constraint>;
+
+// https://github.com/atcoder/ac-library/blob/master/atcoder/dsu.hpp
+// CC0 license
+struct UnionFind {
+    public:
+    UnionFind() : _n(0) {}
+    UnionFind(int n) : _n(n), parent_or_size(n, -1) {}
+
+    int merge(int a, int b) {
+        assert(0 <= a && a < _n);
+        assert(0 <= b && b < _n);
+        int x = leader(a), y = leader(b);
+        if (x == y)
+            return x;
+        if (-parent_or_size[x] < -parent_or_size[y])
+            std::swap(x, y);
+        parent_or_size[x] += parent_or_size[y];
+        parent_or_size[y] = x;
+        return x;
+    }
+
+    bool same(int a, int b) {
+        assert(0 <= a && a < _n);
+        assert(0 <= b && b < _n);
+        return leader(a) == leader(b);
+    }
+
+    int leader(int a) {
+        assert(0 <= a && a < _n);
+        if (parent_or_size[a] < 0)
+            return a;
+        return parent_or_size[a] = leader(parent_or_size[a]);
+    }
+
+    int size(int a) {
+        assert(0 <= a && a < _n);
+        return -parent_or_size[leader(a)];
+    }
+
+    std::vector<std::vector<int>> groups() {
+        std::vector<int> leader_buf(_n), group_size(_n);
+        for (int i = 0; i < _n; i++) {
+            leader_buf[i] = leader(i);
+            group_size[leader_buf[i]]++;
+        }
+        std::vector<std::vector<int>> result(_n);
+        for (int i = 0; i < _n; i++) {
+            result[i].reserve(group_size[i]);
+        }
+        for (int i = 0; i < _n; i++) {
+            result[leader_buf[i]].push_back(i);
+        }
+        result.erase(
+                std::remove_if(result.begin(), result.end(),
+                    [&](const std::vector<int> &v) { return v.empty(); }),
+                result.end());
+        return result;
+    }
+
+    private:
+    int _n;
+    // root node: -1 * component size
+    // otherwise: parent
+    std::vector<int> parent_or_size;
+};
 
 struct Params {
     int N;
@@ -158,8 +250,10 @@ class Solver {
 
     int count_safe_neighbors[MAX_N][MAX_N];
     int count_bomb_neighbors[MAX_N][MAX_N];
-    set<pair<int, int>> unknown_neighbors[MAX_N][MAX_N];
-    vector<pair<int, int>> neighbors[MAX_N][MAX_N];
+    set<Pos> unknown_neighbors[MAX_N][MAX_N];
+    vector<Pos> neighbors[MAX_N][MAX_N];
+
+    set<Pos> positions_with_unknown_values;
 
     bool with_in(int r1, int c1, int r2, int c2, int D) {
         return (r1 - r2) * (r1 - r2) + (c1 - c2) * (c1 - c2) <= D;
@@ -196,11 +290,12 @@ class Solver {
     }
 
     Command choose_minimum_prob() {
-        vector<pair<int, int>> probs[MAX_N][MAX_N];
-        REP(r, params.N) REP(c, params.N) {
-            if (!grid[r][c].is_value()) {
-                continue;
-            }
+        vector<Pos> probs[MAX_N][MAX_N];
+        for(auto p : positions_with_unknown_values) {
+            int r, c;
+            tie(r, c) = p;
+            assert(grid[r][c].is_value());
+            assert(!unknown_neighbors[r][c].empty());
             const int total = unknown_neighbors[r][c].size();
             const int rest = grid[r][c].get_value() - count_bomb_neighbors[r][c];
             for(auto np : unknown_neighbors[r][c]) {
@@ -217,22 +312,24 @@ class Solver {
         double best_prob = default_prob;
 
         REP(r, params.N) REP(c, params.N) {
-            if (!probs[r][c].empty()) {
-                double sum = 0;
-                for(auto p : probs[r][c]) {
-                    int a, b;
-                    tie(a, b) = p;
-                    sum += (double)a/(double)b;
-                }
-                const double prob = sum / (double)probs[r][c].size();
-                if (prob <= best_prob) {
-                    best_r = r;
-                    best_c = c;
-                    best_prob = prob;
-                }
+            if (probs[r][c].empty()) {
+                continue;
+            }
+            assert(!probs[r][c].empty());
+            double sum = 0;
+            for(auto p : probs[r][c]) {
+                int a, b;
+                tie(a, b) = p;
+                sum += (double)a/(double)b;
+            }
+            const double prob = sum / (double)probs[r][c].size();
+            if (prob <= best_prob) {
+                best_r = r;
+                best_c = c;
+                best_prob = prob;
             }
         }
-        cerr << best_r << " " << best_c << " " << best_prob << endl;
+        dbg(best_r, best_c, best_prob);
         if (best_r != -1) {
             return Command::open(best_r, best_c);
         }
@@ -249,19 +346,181 @@ class Solver {
         }
     }
 
+    Constraints extract_constraints() {
+        Constraints results;
+        for(auto p : positions_with_unknown_values) {
+            int r, c;
+            tie(r, c) = p;
+            assert(grid[r][c].is_value() && !unknown_neighbors[r][c].empty());
+            const int value = grid[r][c].get_value() - count_bomb_neighbors[r][c];
+            assert(unknown_neighbors[r][c].size() > value);
+            results.push_back(Constraint(value, set<Pos>(unknown_neighbors[r][c].begin(), unknown_neighbors[r][c].end())));
+        }
+        return results;
+    }
+
+    vector<Constraints> split_constraints(const Constraints& constraints) {
+        UnionFind uf(constraints.size());
+        vector<vector<int>> c_id(params.N, vector<int>(params.N, -1));
+        for(int i = 0; i < constraints.size(); i++) {
+            for (const auto& p : constraints[i].positions) {
+                const int j = c_id[p.first][p.second];
+                if (j == -1) {
+                    c_id[p.first][p.second] = i;
+                } else {
+                    uf.merge(i, j);
+                }
+            }
+        }
+        const auto groups = uf.groups();
+        vector<Constraints> result;
+        for(const auto& group : groups) {
+            Constraints list;
+            for(int i : group) {
+                list.push_back(constraints[i]);
+            }
+            result.push_back(list);
+        }
+        return result;
+    }
+
+    void dfs(
+        int index,
+        vector<bool>& is_mine,
+        vector<int>& count_zero,
+        vector<int>& count_one,
+        vector<vector<bool>>& results,
+        const Constraints& constraints,
+        const vector<vector<int>>& p2c
+    ) {
+        if (index == is_mine.size()) {
+            results.push_back(is_mine);
+            return;
+        }
+        {
+            for(int i : p2c[index]) {
+                count_zero[i] ++;
+            }
+            bool violate = false;
+            for(int i : p2c[index]) {
+                if (count_zero[i] > constraints[i].max_zero()) {
+                    violate = true;
+                    break;
+                }
+            }
+            is_mine[index] = false;
+            if (!violate) {
+                dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+            }
+            for(int i : p2c[index]) {
+                count_zero[i] --;
+            }
+        }
+        {
+            for(int i : p2c[index]) {
+                count_one[i] ++;
+            }
+            bool violate = false;
+            for(int i : p2c[index]) {
+                if (count_one[i] > constraints[i].max_one()) {
+                    violate = true;
+                    break;
+                }
+            }
+            is_mine[index] = true;
+            if (!violate) {
+                dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+            }
+            for(int i : p2c[index]) {
+                count_one[i] --;
+            }
+        }
+    }
+
+    void backtrace(const Constraints& constraints) {
+        set<Pos> point_set;
+        for(const auto& c : constraints) {
+            for(const auto& p : c.positions) {
+                point_set.insert(p);
+            }
+        }
+        vector<Pos> points(point_set.begin(), point_set.end());
+        if (points.size() > 25) {
+            return;
+        }
+        vector<vector<int>> p2c(points.size(), vector<int>());
+        for(int i = 0; i < constraints.size(); i++) {
+            for (int j = 0; j < points.size(); j++) {
+                if (constraints[i].positions.count(points[j])) {
+                    p2c[j].push_back(i);
+                }
+            }
+        }
+        vector<bool> is_mine(points.size(), false);
+        vector<int> count_zero(constraints.size(), 0);
+        vector<int> count_one(constraints.size(), 0);
+
+        vector<vector<bool>> results;
+        dfs(0, is_mine, count_zero, count_one, results, constraints, p2c);
+
+        assert(!results.empty());
+
+        for (int i = 0; i < points.size(); i++) {
+            const auto& p = points[i];
+            int r, c;
+            tie(r, c) = p;
+
+            if (!grid[r][c].is_hidden()) {
+                continue;
+            }
+
+            bool first = results[0][i];
+            bool all_common = true;
+            for(const auto& result : results) {
+                if (result[i] != first) {
+                    all_common = false;
+                    break;
+                }
+            }
+            if (all_common) {
+                if (first) {
+                    update_bomb(r, c);
+                } else {
+                    update_safe(r, c);
+                }
+            }
+        }
+    }
+
+    void global_search() {
+        const auto constraints = extract_constraints();
+        const auto constraint_groups = split_constraints(constraints);
+        for (const auto& group : constraint_groups) {
+            backtrace(group);
+        }
+    }
+
+    void insert_all_opens() {
+        REP(r, params.N) REP(c, params.N) {
+            if (grid[r][c].is_hidden() && judge_grid[r][c].is_hidden()) {
+                next_commands.push_back(Command::open(r, c));
+            }
+        }
+    }
+
     Command decide_next_command() {
+        if (runtime < MAX_RUNTIME * 0.8 && next_commands.empty()) {
+            global_search();
+        }
+
+        if (grid_bomb_count == params.M && grid_unknown_count > 0 && next_commands.empty()) {
+            insert_all_opens();
+        }
+
         if (!next_commands.empty()) {
             Command next = next_commands.back();
             next_commands.pop_back();
             return next;
-        }
-
-        if (grid_bomb_count == params.M) {
-            REP(r, params.N) REP(c, params.N) {
-                if (grid[r][c].is_hidden() && judge_grid[r][c].is_hidden()) {
-                    return Command::open(r, c);
-                }
-            }
         }
 
         if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
@@ -300,6 +559,7 @@ class Solver {
                     update_bomb(nr, nc);
                 }
             }
+            positions_with_unknown_values.erase(make_pair(row, col));
         } else if (count_bomb_neighbors[row][col] == value) {
             const vector<pair<int, int>> nps = vector<pair<int, int>>(unknown_neighbors[row][col].begin(), unknown_neighbors[row][col].end());
             for (auto np : nps) {
@@ -309,6 +569,7 @@ class Solver {
                     update_safe(nr, nc);
                 }
             }
+            positions_with_unknown_values.erase(make_pair(row, col));
         }
     }
 
@@ -362,12 +623,16 @@ class Solver {
 
         assert(grid[row][col].is_safe());
         grid[row][col].set_value(value);
+        if (!unknown_neighbors[row][col].empty()) {
+            positions_with_unknown_values.insert(make_pair(row, col));
+        }
         // no "grid_unknown_count -= 1" because it's updated in update_safe
 
         fire_update(row, col);
     }
 
     void judge_update_value(int row, int col, int value, long runtime) {
+        dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_value(value);
         this->runtime = runtime;
@@ -381,6 +646,7 @@ class Solver {
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
+        dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_bomb();
         this->runtime = runtime;
@@ -412,8 +678,10 @@ int main() {
             break;
         } else if (command.is_flag()) {
             getline(cin, feedback); // empty line expected
+            assert(feedback.empty());
         } else {
             getline(cin, feedback);
+            assert(!feedback.empty());
             if (feedback.find("BOOM!")!=string::npos) {
                 string dummy;
                 long runtime;

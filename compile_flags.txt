@@ -1,1 +1,2 @@
 -std=gnu++11
+-D LOCAL_TEST

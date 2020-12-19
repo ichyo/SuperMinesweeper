@@ -30,7 +30,11 @@ scores = {}
 with open(scores_path) as f:
     for line in f.readlines():
         seed, score = line.split('=')
-        scores[int(seed)] = float(score)
+        seed = int(seed)
+        score = float(score)
+        if score < 0.0:
+            score = 0.0 # convert -1 to 0 for stats
+        scores[seed] = score
 
 params = {}
 for seed in seeds:
