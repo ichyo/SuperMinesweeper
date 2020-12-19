@@ -288,6 +288,10 @@ class Solver {
         return (double)score_uncover/(double)all;
     }
 
+    double score() {
+        return calc_uncover_ratio() / (1.0 + score_mine_hit);
+    }
+
     public:
     Solver(int N, int M, int D, int row, int col) {
         params.N = N;
@@ -531,6 +535,10 @@ class Solver {
             return next;
         }
 
+        if (backtrace_timeout) {
+            return Command::stop();
+        }
+
         const int rest = params.M - grid_bomb_count;
         const int all = grid_unknown_count;
         const double default_prob = (double)rest/(double)all;
@@ -657,6 +665,7 @@ class Solver {
         } else {
             assert(grid[row][col].has_value(value));
         }
+        dbg(score());
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
@@ -671,6 +680,7 @@ class Solver {
         } else {
             assert(grid[row][col].is_bomb());
         }
+        dbg(score());
     }
 };
 
