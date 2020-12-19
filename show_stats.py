@@ -1,6 +1,7 @@
 import argparse
 import os.path
 import yaml
+import csv
 import numpy as np
 
 parser = argparse.ArgumentParser(description='Show stats of test')
@@ -55,3 +56,14 @@ print('25t: {:.4f}'.format(np.percentile(score_values, 25)))
 print('50t: {:.4f}'.format(np.median(score_values)))
 print('75t: {:.4f}'.format(np.percentile(score_values, 75)))
 print('95t: {:.4f}'.format(np.percentile(score_values, 95)))
+
+csv_path = os.path.join(base_dir, 'scores.csv')
+with open(csv_path, 'w') as f:
+    writer = csv.writer(f)
+    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score'])
+    for seed in seeds:
+        n = params[seed]['n']
+        m = params[seed]['m']
+        d = params[seed]['d']
+        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed]])
+print('Written into {}'.format(csv_path))
