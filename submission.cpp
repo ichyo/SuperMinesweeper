@@ -8,6 +8,7 @@
 #include <tuple>
 #include <algorithm>
 #include <chrono>
+#include <bitset>
 
 #ifdef LOCAL_TEST
 #include "./dbg.hpp"
@@ -22,6 +23,8 @@
 using namespace std;
 
 const int MAX_N = 50;
+
+const int MAX_POINTS = 64 * 6;
 
 const int ESTIMATED_ADD_BOMB = 3; // TODO: tuning here
 
@@ -367,14 +370,14 @@ class Solver {
 
     void dfs(
         int index,
-        vector<bool>& is_mine,
+        bitset<MAX_POINTS>& is_mine,
         vector<int>& count_zero,
         vector<int>& count_one,
-        vector<vector<bool>>& results,
+        vector<bitset<MAX_POINTS>>& results,
         const Constraints& constraints,
         const vector<vector<int>>& p2c
     ) {
-        if (index == is_mine.size()) {
+        if (index == p2c.size()) {
             results.push_back(is_mine);
             return;
         }
@@ -444,6 +447,9 @@ class Solver {
             }
         }
         vector<Pos> points(point_set.begin(), point_set.end());
+        if (points.size() > MAX_POINTS) {
+            return;
+        }
 
         vector<vector<int>> p2c(points.size(), vector<int>());
         for(int i = 0; i < constraints.size(); i++) {
@@ -453,11 +459,11 @@ class Solver {
                 }
             }
         }
-        vector<bool> is_mine(points.size(), false);
+        bitset<MAX_POINTS> is_mine;
         vector<int> count_zero(constraints.size(), 0);
         vector<int> count_one(constraints.size(), 0);
 
-        vector<vector<bool>> results;
+        vector<bitset<MAX_POINTS>> results;
         dfs(0, is_mine, count_zero, count_one, results, constraints, p2c);
 
         if (backtrace_timeout) {
