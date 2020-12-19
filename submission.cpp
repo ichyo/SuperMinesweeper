@@ -22,6 +22,8 @@ using namespace std;
 
 const int MAX_N = 50;
 
+const int BACKTRACE_MAX_N = 30;
+
 using Pos = pair<int, int>;
 
 struct Constraint {
@@ -445,7 +447,7 @@ class Solver {
             }
         }
         vector<Pos> points(point_set.begin(), point_set.end());
-        if (points.size() > 25) {
+        if (points.size() > BACKTRACE_MAX_N) {
             return;
         }
         vector<vector<int>> p2c(points.size(), vector<int>());
