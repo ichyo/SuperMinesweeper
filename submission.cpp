@@ -7,6 +7,7 @@
 #include <cstring>
 #include <tuple>
 #include <algorithm>
+#include <chrono>
 
 #ifdef LOCAL_TEST
 #include "./dbg.hpp"
@@ -21,8 +22,6 @@
 using namespace std;
 
 const int MAX_N = 50;
-
-const int BACKTRACE_MAX_N = 30;
 
 using Pos = pair<int, int>;
 
@@ -244,10 +243,31 @@ class Solver {
     int score_uncover = 0;
     int score_mine_hit = 0;
 
+    bool backtrace_timeout = false;
+
     vector<vector<Cell>> judge_grid;
     vector<vector<Cell>> grid;
 
     long runtime = 0;
+    std::chrono::system_clock::time_point last_update = chrono::system_clock::now();
+    std::chrono::system_clock::time_point now = chrono::system_clock::now();
+    int now_counter = 0;
+
+    void set_runtime(long runtime) {
+        this->runtime = runtime;
+        last_update = chrono::system_clock::now();
+        now = last_update;
+        now_counter = 0;
+    }
+
+    long get_runtime() {
+        if (++now_counter == 1000) {
+            now_counter = 0;
+            now = chrono::system_clock::now();
+        }
+        return runtime + chrono::duration_cast<std::chrono::milliseconds>(now-last_update).count();
+    }
+
     vector<Command> next_commands;
 
     int count_safe_neighbors[MAX_N][MAX_N];
@@ -399,6 +419,12 @@ class Solver {
             results.push_back(is_mine);
             return;
         }
+
+        if (backtrace_timeout || get_runtime() > MAX_RUNTIME * 0.9) {
+            backtrace_timeout = true;
+            return;
+        }
+
         {
             for(int i : p2c[index]) {
                 count_zero[i] ++;
@@ -439,7 +465,11 @@ class Solver {
         }
     }
 
-    void backtrace(const Constraints& constraints) {
+    void backtrace(const Constraints& constraints, vector<pair<double, Pos>>& probabilities) {
+        if (backtrace_timeout) {
+            return;
+        }
+
         set<Pos> point_set;
         for(const auto& c : constraints) {
             for(const auto& p : c.positions) {
@@ -447,9 +477,7 @@ class Solver {
             }
         }
         vector<Pos> points(point_set.begin(), point_set.end());
-        if (points.size() > BACKTRACE_MAX_N) {
-            return;
-        }
+
         vector<vector<int>> p2c(points.size(), vector<int>());
         for(int i = 0; i < constraints.size(); i++) {
             for (int j = 0; j < points.size(); j++) {
@@ -465,6 +493,10 @@ class Solver {
         vector<vector<bool>> results;
         dfs(0, is_mine, count_zero, count_one, results, constraints, p2c);
 
+        if (backtrace_timeout) {
+            return;
+        }
+
         assert(!results.empty());
 
         for (int i = 0; i < points.size(); i++) {
@@ -476,30 +508,36 @@ class Solver {
                 continue;
             }
 
-            bool first = results[0][i];
-            bool all_common = true;
+            int count_one = 0;
             for(const auto& result : results) {
-                if (result[i] != first) {
-                    all_common = false;
-                    break;
+                if (result[i]) {
+                    count_one += 1;
                 }
             }
-            if (all_common) {
-                if (first) {
-                    update_bomb(r, c);
-                } else {
-                    update_safe(r, c);
-                }
+            if (count_one == 0) {
+                update_safe(r, c);
+            } else if (count_one == results.size()) {
+                update_bomb(r, c);
+            } else {
+                probabilities.push_back(make_pair((double)count_one/(double)results.size(), p));
             }
         }
     }
 
-    void global_search() {
+    vector<pair<double, Pos>> global_search() {
+        if (backtrace_timeout) {
+            return vector<pair<double, Pos>>();
+        }
+
         const auto constraints = extract_constraints();
         const auto constraint_groups = split_constraints(constraints);
+        vector<pair<double, Pos>> probabilities;
         for (const auto& group : constraint_groups) {
-            backtrace(group);
+            backtrace(group, probabilities);
         }
+        dbg(next_commands.size());
+        sort(probabilities.begin(), probabilities.end());
+        return probabilities;
     }
 
     void insert_all_opens() {
@@ -511,8 +549,9 @@ class Solver {
     }
 
     Command decide_next_command() {
-        if (runtime < MAX_RUNTIME * 0.8 && next_commands.empty()) {
-            global_search();
+        vector<pair<double, Pos>> probabilities;
+        if (next_commands.empty()) {
+            probabilities = global_search();
         }
 
         if (grid_bomb_count == params.M && grid_unknown_count > 0 && next_commands.empty()) {
@@ -526,16 +565,11 @@ class Solver {
         }
 
         if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
-            Command next = choose_minimum_prob();
-            if (!next.is_stop()) {
-                return next;
-            }
-        }
-
-        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
-            Command next = choose_random_unknown();
-            if (!next.is_stop()) {
-                return next;
+            if (!probabilities.empty()) {
+                const auto p = probabilities[0].second;
+                if (p.first < 0.1) {
+                    return Command::open(p.first, p.second);
+                }
             }
         }
 
@@ -637,8 +671,8 @@ class Solver {
         dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_value(value);
-        this->runtime = runtime;
         this->score_uncover += 1;
+        set_runtime(runtime);
 
         if (grid[row][col].is_hidden() || grid[row][col].is_safe()) {
             update_value(row, col, value);
@@ -651,8 +685,8 @@ class Solver {
         dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_bomb();
-        this->runtime = runtime;
         this->score_mine_hit += 1;
+        set_runtime(runtime);
 
         if (grid[row][col].is_hidden()) {
             update_bomb(row, col);
