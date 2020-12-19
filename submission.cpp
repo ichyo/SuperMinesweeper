@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <chrono>
 #include <bitset>
+#include <functional>
 
 #ifdef LOCAL_TEST
 #include "./dbg.hpp"
@@ -26,7 +27,7 @@ const int MAX_N = 50;
 
 const int MAX_POINTS = 64 * 6;
 
-const int ESTIMATED_ADD_BOMB = 3; // TODO: tuning here
+const int ESTIMATED_ADD_BOMB = 4; // TODO: tuning here
 
 using Pos = pair<int, int>;
 
@@ -286,6 +287,11 @@ class Solver {
         return (r1 - r2) * (r1 - r2) + (c1 - c2) * (c1 - c2) <= D;
     }
 
+    bool is_all_uncovered() {
+        const int all = params.N * params.N - params.M;
+        return all == score_uncover;
+    }
+
     double calc_uncover_ratio() {
         const int all = params.N * params.N - params.M;
         return (double)score_uncover/(double)all;
@@ -531,6 +537,10 @@ class Solver {
     }
 
     Command decide_next_command() {
+        if (is_all_uncovered()) {
+            return Command::stop();
+        }
+
         vector<pair<double, Pos>> probabilities;
         if (next_commands.empty()) {
             probabilities = global_search();
@@ -554,21 +564,27 @@ class Solver {
         const int all = grid_unknown_count;
         const double default_prob = (double)rest/(double)all;
 
-        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB)) {
-            if (!probabilities.empty()) {
-                const auto best = probabilities[0];
-                dbg(best);
-                if (best.first < default_prob) {
-                    return Command::open(best.second.first, best.second.second);
-                }
+        function<Command()> factory = [this]() { return this->choose_random_unknown(); };
+        double prob = default_prob;
+
+        if (!probabilities.empty()) {
+            const auto best = probabilities[0];
+            dbg(best);
+            if (best.first < default_prob) {
+                factory = [best]() { return Command::open(best.second.first, best.second.second); };
+                prob = best.first;
             }
-            return choose_random_unknown();
-        } else {
-            dbg(calc_uncover_ratio());
-            dbg(score_mine_hit);
-            dbg(calc_uncover_ratio() / (1 + score_mine_hit));
-            dbg(1.0 / (1 + score_mine_hit + ESTIMATED_ADD_BOMB));
         }
+
+        const double ratio = calc_uncover_ratio();
+        const bool do_invest = score() <= 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        if (do_invest) {
+            return factory();
+        }
+
+        dbg(score());
+        dbg(ratio);
+        dbg(score_mine_hit);
 
         return Command::stop();
     }
