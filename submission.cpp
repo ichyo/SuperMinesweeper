@@ -420,7 +420,15 @@ class Solver {
             return;
         }
 
-        if (backtrace_timeout || get_runtime() > MAX_RUNTIME * 0.9) {
+        if (backtrace_timeout) {
+            return;
+        }
+
+        if (get_runtime() > MAX_RUNTIME * 0.9) {
+            dbg(get_runtime());
+            dbg(p2c.size());
+            dbg(constraints.size());
+            dbg(results.size());
             backtrace_timeout = true;
             return;
         }
@@ -514,9 +522,9 @@ class Solver {
                     count_one += 1;
                 }
             }
-            if (count_one == 0) {
+            if (!backtrace_timeout && count_one == 0) {
                 update_safe(r, c);
-            } else if (count_one == results.size()) {
+            } else if (!backtrace_timeout && count_one == results.size()) {
                 update_bomb(r, c);
             } else {
                 probabilities.push_back(make_pair((double)count_one/(double)results.size(), p));
@@ -534,6 +542,10 @@ class Solver {
         vector<pair<double, Pos>> probabilities;
         for (const auto& group : constraint_groups) {
             backtrace(group, probabilities);
+            if (backtrace_timeout) {
+                dbg(constraint_groups.size());
+                break;
+            }
         }
         dbg(next_commands.size());
         sort(probabilities.begin(), probabilities.end());

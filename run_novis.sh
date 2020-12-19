@@ -2,8 +2,15 @@
 
 set -eu
 
-SEED=${1:-1}
+SEED=1
 EXEC=./submission
+
+while getopts "s:" "flag"; do
+    case $flag in
+        s) SEED="${OPTARG}";;
+    esac
+done
+shift $((OPTIND-1))
 
 make
 
