@@ -23,6 +23,8 @@ using namespace std;
 
 const int MAX_N = 50;
 
+const int ESTIMATED_ADD_BOMB = 5; // TODO: tuning here
+
 using Pos = pair<int, int>;
 
 struct Constraint {
@@ -311,53 +313,6 @@ class Solver {
         judge_update_value(row, col, 0, 0);
     }
 
-    Command choose_minimum_prob() {
-        vector<Pos> probs[MAX_N][MAX_N];
-        for(auto p : positions_with_unknown_values) {
-            int r, c;
-            tie(r, c) = p;
-            assert(grid[r][c].is_value());
-            assert(!unknown_neighbors[r][c].empty());
-            const int total = unknown_neighbors[r][c].size();
-            const int rest = grid[r][c].get_value() - count_bomb_neighbors[r][c];
-            for(auto np : unknown_neighbors[r][c]) {
-                int nr, nc;
-                tie(nr, nc) = np;
-                probs[nr][nc].push_back(make_pair(rest, total));
-            }
-        }
-        int rest = params.M - grid_bomb_count;
-        int all = grid_unknown_count;
-        double default_prob = (double)rest/(double)all;
-
-        int best_r = -1, best_c = -1;
-        double best_prob = default_prob;
-
-        REP(r, params.N) REP(c, params.N) {
-            if (probs[r][c].empty()) {
-                continue;
-            }
-            assert(!probs[r][c].empty());
-            double sum = 0;
-            for(auto p : probs[r][c]) {
-                int a, b;
-                tie(a, b) = p;
-                sum += (double)a/(double)b;
-            }
-            const double prob = sum / (double)probs[r][c].size();
-            if (prob <= best_prob) {
-                best_r = r;
-                best_c = c;
-                best_prob = prob;
-            }
-        }
-        dbg(best_r, best_c, best_prob);
-        if (best_r != -1) {
-            return Command::open(best_r, best_c);
-        }
-        return Command::stop();
-    }
-
     Command choose_random_unknown() {
         while(true) {
             int r = rand() % params.N;
@@ -576,13 +531,24 @@ class Solver {
             return next;
         }
 
-        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + 1)) {
+        const int rest = params.M - grid_bomb_count;
+        const int all = grid_unknown_count;
+        const double default_prob = (double)rest/(double)all;
+
+        if (calc_uncover_ratio() / (1.0 + score_mine_hit) <= 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB)) {
             if (!probabilities.empty()) {
-                const auto p = probabilities[0].second;
-                if (p.first < 0.1) {
-                    return Command::open(p.first, p.second);
+                const auto best = probabilities[0];
+                dbg(best);
+                if (best.first < default_prob) {
+                    return Command::open(best.second.first, best.second.second);
                 }
             }
+            return choose_random_unknown();
+        } else {
+            dbg(calc_uncover_ratio());
+            dbg(score_mine_hit);
+            dbg(calc_uncover_ratio() / (1 + score_mine_hit));
+            dbg(1.0 / (1 + score_mine_hit + ESTIMATED_ADD_BOMB));
         }
 
         return Command::stop();
