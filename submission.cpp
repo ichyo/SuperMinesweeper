@@ -477,6 +477,11 @@ class Solver {
 
             int count_one = 0;
             for(const auto& result : results) {
+                if (get_runtime() > MAX_RUNTIME * 0.95) {
+                    backtrace_timeout = true;
+                    return;
+                }
+
                 if (result[i]) {
                     count_one += 1;
                 }

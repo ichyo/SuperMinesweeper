@@ -14,4 +14,4 @@ shift $((OPTIND-1))
 
 make
 
-java -jar tester/tester.jar -exec $EXEC -seed $SEED -delay 0 -novis -noSummary -debug -saveAll /tmp/novis/io -screen 2
+java -jar tester/tester.jar -exec $EXEC -seed $SEED -delay 0 -novis -noSummary -debug -saveAll /tmp/novis/io -screen 2 -timeLimit 7500
