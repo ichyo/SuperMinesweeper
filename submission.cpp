@@ -383,7 +383,7 @@ class Solver {
             return;
         }
 
-        if (get_runtime() > MAX_RUNTIME * 0.9) {
+        if (get_runtime() > MAX_RUNTIME * 0.95) {
             dbg(get_runtime());
             dbg(p2c.size());
             dbg(constraints.size());
