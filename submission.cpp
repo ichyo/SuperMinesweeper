@@ -23,7 +23,7 @@ using namespace std;
 
 const int MAX_N = 50;
 
-const int ESTIMATED_ADD_BOMB = 5; // TODO: tuning here
+const int ESTIMATED_ADD_BOMB = 3; // TODO: tuning here
 
 using Pos = pair<int, int>;
 
