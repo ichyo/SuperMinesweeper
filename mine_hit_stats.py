@@ -8,7 +8,7 @@ values = []
 with open(path) as f:
     reader = csv.DictReader(f)
     for row in reader:
-        if row['reason'] != "":
+        if row['reason'] == 'win' or row['reason'] == 'maybe_win':
             values.append(int(row['mine_hit']))
 
 values = np.array(values)
