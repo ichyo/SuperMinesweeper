@@ -367,17 +367,33 @@ class Solver {
         return results;
     }
 
-    Constraints extract_neighbors() {
-        Constraints results;
+    vector<pair<int, Pos>> find_new_neighbors() {
+        set<Pos> all_unknown_neighbors;
         for(auto p : positions_with_unknown_values) {
             int r, c;
             tie(r, c) = p;
             assert(grid[r][c].is_value() && !unknown_neighbors[r][c].empty());
-            const int value = grid[r][c].get_value() - count_bomb_neighbors[r][c];
-            assert(unknown_neighbors[r][c].size() > value);
-            results.push_back(Constraint(value, set<Pos>(unknown_neighbors[r][c].begin(), unknown_neighbors[r][c].end())));
+            for(auto np : unknown_neighbors[r][c]) {
+                all_unknown_neighbors.insert(np);
+            }
         }
-        return results;
+        map<Pos, int> counter;
+        for(auto p : all_unknown_neighbors) {
+            int r, c;
+            tie(r, c) = p;
+            for(auto np : unknown_neighbors[r][c]) {
+                if (!all_unknown_neighbors.count(np)) {
+                    counter[np] += 1;
+                }
+            }
+        }
+        vector<pair<int, Pos>> result;
+        for(auto p : counter) {
+            result.push_back(make_pair(p.second, p.first));
+        }
+        sort(result.begin(), result.end());
+        reverse(result.begin(), result.end());
+        return result;
     }
 
     vector<Constraints> split_constraints(const Constraints& constraints) {
