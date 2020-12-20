@@ -244,10 +244,12 @@ class Command {
 struct Stats {
     int guess_count = 0;
     int random_guess_count = 0;
+    double max_score = 0.0;
 
     void print() {
         cerr << "guess_count: " << guess_count << endl;
         cerr << "random_guess_count: " << random_guess_count << endl;
+        cerr << "max_score: " << max_score << endl;
     }
 };
 
@@ -592,7 +594,10 @@ class Solver {
             next_commands.pop_back();
 
             if (next.is_open() && is_last_move()) {
+                this->score_uncover += 1; // to print correct stats
+                stats.max_score = max(score(), stats.max_score);
                 print_stats("win");
+                this->score_uncover -= 1;
             }
             return next;
         }
@@ -746,6 +751,8 @@ class Solver {
             assert(grid[row][col].has_value(value));
         }
         //dbg(score());
+
+        stats.max_score = max(score(), stats.max_score);
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
