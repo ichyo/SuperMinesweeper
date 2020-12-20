@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include <cstring>
+#include <cmath>
 #include <tuple>
 #include <algorithm>
 #include <chrono>
@@ -600,6 +601,27 @@ class Solver {
         cerr.flush();
     }
 
+    double estimate_final_score(double prob) {
+        if (params.D != 1) {
+            return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        }
+        const int rest = params.N * params.N - params.M - score_uncover;
+        const double a = 0.24931335;
+        const double b = 17.86378303;
+        const double c = -2.76674817;
+        const double r = (double)params.M/params.N/params.N;
+        const double k = 0.5; // why required?
+        const double estimated_add = (a * exp(b * r) + c) / 1000.0 * rest * k;
+        const double estimated_final_score = prob * (1.0 / (1.0 + score_mine_hit + 1.0 + estimated_add))
+             + (1 - prob) * (1.0 / (1.0 + score_mine_hit + estimated_add));
+
+        dbg(estimated_add);
+        dbg(estimated_final_score);
+        dbg(1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob));
+
+        return estimated_final_score;
+    }
+
     Command decide_next_command() {
         assert(!is_game_end());
 
@@ -653,7 +675,7 @@ class Solver {
         }
 
         const double ratio = calc_uncover_ratio();
-        const bool do_invest = score() <= 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        const bool do_invest = score() <= estimate_final_score(prob);
         if (do_invest) {
 
             stats.guess_count += 1;
