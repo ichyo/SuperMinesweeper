@@ -366,6 +366,19 @@ class Solver {
         return results;
     }
 
+    Constraints extract_neighbors() {
+        Constraints results;
+        for(auto p : positions_with_unknown_values) {
+            int r, c;
+            tie(r, c) = p;
+            assert(grid[r][c].is_value() && !unknown_neighbors[r][c].empty());
+            const int value = grid[r][c].get_value() - count_bomb_neighbors[r][c];
+            assert(unknown_neighbors[r][c].size() > value);
+            results.push_back(Constraint(value, set<Pos>(unknown_neighbors[r][c].begin(), unknown_neighbors[r][c].end())));
+        }
+        return results;
+    }
+
     vector<Constraints> split_constraints(const Constraints& constraints) {
         UnionFind uf(constraints.size());
         vector<vector<int>> c_id(params.N, vector<int>(params.N, -1));
@@ -600,11 +613,9 @@ class Solver {
         if (!probabilities.empty()) {
             const auto best = probabilities[0];
             dbg(best);
-            if (best.first < default_prob) {
-                factory = [best]() { return Command::open(best.second.first, best.second.second); };
-                prob = best.first;
-                random_guess = false;
-            }
+            factory = [best]() { return Command::open(best.second.first, best.second.second); };
+            prob = best.first;
+            random_guess = false;
         }
 
         const double ratio = calc_uncover_ratio();
@@ -723,7 +734,7 @@ class Solver {
     }
 
     void judge_update_value(int row, int col, int value, long runtime) {
-        dbg(runtime);
+        //dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_value(value);
         this->score_uncover += 1;
@@ -738,7 +749,7 @@ class Solver {
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
-        dbg(runtime);
+        //dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_bomb();
         this->score_mine_hit += 1;
