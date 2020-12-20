@@ -13,11 +13,13 @@ EXEC=./submission
 
 MORE_ARG=""
 
-while getopts "n:t:d:" "flag"; do
+while getopts "n:t:d:l:m:" "flag"; do
     case $flag in
         n) CASE=${OPTARG};;
         t) THREADS=${OPTARG};;
         d) MORE_ARG="${MORE_ARG} -d ${OPTARG}";;
+        l) MORE_ARG="${MORE_ARG} -n ${OPTARG}";;
+        m) MORE_ARG="${MORE_ARG} -m ${OPTARG}";;
     esac
 done
 shift $((OPTIND-1))
