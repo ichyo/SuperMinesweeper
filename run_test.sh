@@ -11,10 +11,13 @@ BASE=1000000
 SOURCE=./submission.cpp
 EXEC=./submission
 
-while getopts "n:t:" "flag"; do
+MORE_ARG=""
+
+while getopts "n:t:d:" "flag"; do
     case $flag in
         n) CASE=${OPTARG};;
         t) THREADS=${OPTARG};;
+        d) MORE_ARG="${MORE_ARG} -d ${OPTARG}";;
     esac
 done
 shift $((OPTIND-1))
@@ -35,11 +38,12 @@ echo "time_limit: ${TL}" | tee -a $OUTPUT/info.yml
 echo "first_seed: ${BASE}" | tee -a $OUTPUT/info.yml
 echo "case_num: ${CASE}" | tee -a $OUTPUT/info.yml
 echo "start_time: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a $OUTPUT/info.yml
+echo "additional_args: ${MORE_ARG}"
 
 echo ""
 echo $OUTPUT
 
-java -jar tester/tester.jar -exec $EXEC -seed $BASE+$CASE -novis -noSummary -timeLimit $TL -threads $THREADS -saveScores $OUTPUT/scores.txt -saveAll $OUTPUT/io > /dev/null
+java -jar tester/tester.jar -exec $EXEC -seed $BASE+$CASE -novis -noSummary -timeLimit $TL -threads $THREADS -saveScores $OUTPUT/scores.txt -saveAll $OUTPUT/io $MORE_ARG > /dev/null
 
 echo "end_time: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a $OUTPUT/info.yml
 
