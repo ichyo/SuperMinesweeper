@@ -26,8 +26,6 @@ using namespace std;
 
 const int MAX_N = 50;
 
-const int MAX_POINTS = 64 * 6;
-
 const int ESTIMATED_ADD_BOMB = 4; // TODO: tuning here
 
 using Pos = pair<int, int>;
@@ -490,9 +488,6 @@ class Solver {
             }
         }
         vector<Pos> points(point_set.begin(), point_set.end());
-        if (points.size() > MAX_POINTS) {
-            return;
-        }
 
         map<Pos, int> occurance;
         for(const auto& c : constraints) {
