@@ -49,6 +49,40 @@ for seed in seeds:
         'd': param_d,
     }
 
+meta = {}
+for seed in seeds:
+    input_path = os.path.join(base_dir, 'io', '{}.err'.format(seed))
+    reason = ""
+    runtime = 0
+    uncover_ratio = 0.0
+    mine_hit = 0
+    guess_count = 0
+    random_guess_count = 0
+    with open(input_path) as f:
+        for s in f.readlines():
+            if s.startswith("reason: "):
+                reason = s.split(" ")[1].strip()
+            if s.startswith("runtime: "):
+                runtime = int(s.split(" ")[1].strip())
+            if s.startswith("uncover_ratio: "):
+                uncover_ratio = float(s.split(" ")[1].strip())
+            if s.startswith("mine_hit: "):
+                mine_hit = int(s.split(" ")[1].strip())
+            if s.startswith("guess_count: "):
+                guess_count = int(s.split(" ")[1].strip())
+            if s.startswith("random_guess_count: "):
+                random_guess_count = int(s.split(" ")[1].strip())
+        if reason == "":
+            print('Warning: seed={} has no reason'.format(seed))
+    meta[seed] = {
+        'reason': reason,
+        'runtime': runtime,
+        'uncover_ratio': uncover_ratio,
+        'mine_hit': mine_hit,
+        'guess_count': guess_count,
+        'random_guess_count': random_guess_count,
+    }
+
 score_values = np.array(list(scores.values()))
 
 print('=== score stats ===')
@@ -64,10 +98,16 @@ print('95t: {:.4f}'.format(np.percentile(score_values, 95)))
 csv_path = os.path.join(base_dir, 'scores.csv')
 with open(csv_path, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score'])
+    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score', 'reason', 'runtime', 'uncover_ratio', 'mine_hit', 'guess_count', 'random_guess_count'])
     for seed in seeds:
         n = params[seed]['n']
         m = params[seed]['m']
         d = params[seed]['d']
-        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed]])
+        reason = meta[seed]['reason']
+        runtime = meta[seed]['runtime']
+        uncover_ratio = meta[seed]['uncover_ratio']
+        mine_hit = meta[seed]['mine_hit']
+        guess_count = meta[seed]['guess_count']
+        random_guess_count = meta[seed]['random_guess_count']
+        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed], reason, runtime, uncover_ratio, mine_hit, guess_count, random_guess_count])
 print('Written into {}'.format(csv_path))

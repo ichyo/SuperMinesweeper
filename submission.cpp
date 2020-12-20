@@ -241,8 +241,20 @@ class Command {
     }
 };
 
+struct Stats {
+    int guess_count = 0;
+    int random_guess_count = 0;
+
+    void print() {
+        cerr << "guess_count: " << guess_count << endl;
+        cerr << "random_guess_count: " << random_guess_count << endl;
+    }
+};
+
 class Solver {
     Params params;
+
+    Stats stats;
 
     int grid_unknown_count = 0;
     int grid_bomb_count = 0;
@@ -266,8 +278,8 @@ class Solver {
         now_counter = 0;
     }
 
-    long get_runtime() {
-        if (++now_counter == 1000) {
+    long get_runtime(bool force=false) {
+        if (force || ++now_counter == 1000) {
             now_counter = 0;
             now = chrono::system_clock::now();
         }
@@ -285,11 +297,6 @@ class Solver {
 
     bool with_in(int r1, int c1, int r2, int c2, int D) {
         return (r1 - r2) * (r1 - r2) + (c1 - c2) * (c1 - c2) <= D;
-    }
-
-    bool is_all_uncovered() {
-        const int all = params.N * params.N - params.M;
-        return all == score_uncover;
     }
 
     double calc_uncover_ratio() {
@@ -324,6 +331,16 @@ class Solver {
         grid_unknown_count = params.N * params.N;
 
         judge_update_value(row, col, 0, 0);
+    }
+
+    bool is_game_end() {
+        const int all = params.N * params.N - params.M;
+        return all == score_uncover;
+    }
+
+    bool is_last_move() {
+        const int all = params.N * params.N - params.M;
+        return all == score_uncover + 1;
     }
 
     Command choose_random_unknown() {
@@ -536,10 +553,17 @@ class Solver {
         }
     }
 
+    void print_stats(string reason) {
+        cerr << "reason: " << reason << endl;
+        cerr << "runtime: " << get_runtime(true) << endl;
+        cerr << "uncover_ratio: " << calc_uncover_ratio() << endl;
+        cerr << "mine_hit: " << score_mine_hit << endl;
+        stats.print();
+        cerr.flush();
+    }
+
     Command decide_next_command() {
-        if (is_all_uncovered()) {
-            return Command::stop();
-        }
+        assert(!is_game_end());
 
         vector<pair<double, Pos>> probabilities;
         if (next_commands.empty()) {
@@ -553,10 +577,15 @@ class Solver {
         if (!next_commands.empty()) {
             Command next = next_commands.back();
             next_commands.pop_back();
+
+            if (next.is_open() && is_last_move()) {
+                print_stats("win");
+            }
             return next;
         }
 
         if (backtrace_timeout) {
+            print_stats("timeout");
             return Command::stop();
         }
 
@@ -566,6 +595,7 @@ class Solver {
 
         function<Command()> factory = [this]() { return this->choose_random_unknown(); };
         double prob = default_prob;
+        bool random_guess = true;
 
         if (!probabilities.empty()) {
             const auto best = probabilities[0];
@@ -573,12 +603,23 @@ class Solver {
             if (best.first < default_prob) {
                 factory = [best]() { return Command::open(best.second.first, best.second.second); };
                 prob = best.first;
+                random_guess = false;
             }
         }
 
         const double ratio = calc_uncover_ratio();
         const bool do_invest = score() <= 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
         if (do_invest) {
+
+            stats.guess_count += 1;
+            if (random_guess) {
+                stats.random_guess_count += 1;
+            }
+
+            if (is_last_move()) {
+                print_stats("maybe_win");
+            }
+
             return factory();
         }
 
@@ -586,6 +627,7 @@ class Solver {
         dbg(ratio);
         dbg(score_mine_hit);
 
+        print_stats("stop");
         return Command::stop();
     }
 
@@ -692,7 +734,7 @@ class Solver {
         } else {
             assert(grid[row][col].has_value(value));
         }
-        dbg(score());
+        //dbg(score());
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
@@ -707,7 +749,7 @@ class Solver {
         } else {
             assert(grid[row][col].is_bomb());
         }
-        dbg(score());
+        //dbg(score());
     }
 };
 
@@ -719,7 +761,7 @@ int main() {
 
     Solver solver(N, M, D, row, col);
 
-    while(true) {
+    while(!solver.is_game_end()) {
         Command command = solver.decide_next_command();
 
         cout << command.to_string() << endl;

@@ -1,14 +1,6 @@
 package com.topcoder.marathon;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.*;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -238,6 +230,13 @@ public abstract class MarathonTester {
             solOutputWriter.write(lastLine);
             solOutputWriter.newLine();
         }
+
+        try {
+            solErrorReader.readAndWrite();
+        } catch (final IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
         return lastLine;
     }
 
@@ -288,8 +287,7 @@ public abstract class MarathonTester {
                     boolean printMessages = true;
                     if (parameters.isDefined(Parameters.noOutput)) printMessages = false;
                     process = Runtime.getRuntime().exec(cmd);
-                    solErrorReader = new ErrorReader(process.getErrorStream(), printMessages, solErrorWriter);
-                    solErrorReader.start();
+                    solErrorReader = new ErrorReader(new BufferedReader(new InputStreamReader(process.getErrorStream())), printMessages, solErrorWriter);
                     solOutputReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
                     BufferedWriter out = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
                     solInputWriters.add(out);
@@ -335,15 +333,15 @@ public abstract class MarathonTester {
             } catch (Exception e) {
             }
         }
+        if (solErrorReader != null) {
+            solErrorReader.close();
+            solutionError = solErrorReader.getOutput();
+        }
         if (solErrorWriter != null) {
             try {
                 solErrorWriter.close();
             } catch (Exception e) {
             }
-        }
-        if (solErrorReader != null) {
-            solErrorReader.close();
-            solutionError = solErrorReader.getOutput();
         }
         if (process != null) {
             try {

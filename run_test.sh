@@ -11,9 +11,10 @@ BASE=1000000
 SOURCE=./submission.cpp
 EXEC=./submission
 
-while getopts "n:" "flag"; do
+while getopts "n:t:" "flag"; do
     case $flag in
-        n) CASE=${OPTARG}
+        n) CASE=${OPTARG};;
+        t) THREADS=${OPTARG};;
     esac
 done
 shift $((OPTIND-1))

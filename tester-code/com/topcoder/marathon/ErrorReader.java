@@ -1,43 +1,35 @@
 package com.topcoder.marathon;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.InputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
-class ErrorReader extends Thread {
-    private final InputStream errorStream;
+class ErrorReader {
+    private final BufferedReader errorStream;
     private final BufferedWriter errorWriter;
     private final StringBuilder sb = new StringBuilder();
     private final boolean printMessages;
     private static final int maxLength = 10_000_000;
 
-    public ErrorReader(InputStream errorStream, boolean printMessages, BufferedWriter errorWriter) {
+    public ErrorReader(BufferedReader errorStream, boolean printMessages, BufferedWriter errorWriter) {
         this.errorStream = errorStream;
         this.printMessages = printMessages;
         this.errorWriter = errorWriter;
     }
 
-    public void run() {
-        StringBuilder buffer = new StringBuilder();
-        try {
-            byte[] ch = new byte[65536];
-            int read;
-            while ((read = errorStream.read(ch)) > 0) {
-                String s = new String(ch, 0, read);
-                buffer.append(s);
-                if (errorStream.available() == 0) {
-                    write(buffer.toString());
-                    buffer.delete(0, buffer.length());
-                }
-            }
-        } catch (Exception e) {
+    public void readAndWrite() throws IOException {
+        int ch;
+        final StringBuilder buffer = new StringBuilder();
+        while (errorStream.ready() && (ch = errorStream.read()) >= 0) {
+            buffer.append((char)ch);
         }
-        try {
-            if (buffer.length() > 0) write(buffer.toString());
-        } catch (Exception e) {
+        if (buffer.length() > 0) {
+            write(buffer.toString());
         }
     }
 
-    private void write(String s) throws Exception {
+    private void write(String s) throws IOException {
         if (sb.length() < maxLength) sb.append(s);
         if (printMessages) {
             System.out.print(s);
@@ -54,6 +46,12 @@ class ErrorReader extends Thread {
     }
 
     public void close() {
+        try {
+            readAndWrite();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+
         try {
             if (errorStream != null) errorStream.close();
         } catch (Exception e) {
