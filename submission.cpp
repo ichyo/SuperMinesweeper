@@ -2,6 +2,7 @@
 #include <sstream>
 #include <vector>
 #include <set>
+#include <map>
 #include <string>
 #include <cassert>
 #include <cstring>
@@ -488,6 +489,18 @@ class Solver {
         if (points.size() > MAX_POINTS) {
             return;
         }
+
+        map<Pos, int> occurance;
+        for(const auto& c : constraints) {
+            for(const auto& p : c.positions) {
+                occurance[p]++;
+            }
+        }
+
+        sort(points.begin(), points.end(), [&](const Pos& a, const Pos& b){
+            return occurance[a] > occurance[b];
+        });
+        assert(occurance[points[0]] >= occurance[points[points.size() - 1]]);
 
         vector<vector<int>> p2c(points.size(), vector<int>());
         for(int i = 0; i < constraints.size(); i++) {
