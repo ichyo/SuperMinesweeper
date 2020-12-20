@@ -407,16 +407,14 @@ class Solver {
         return result;
     }
 
-    void dfs(
-        int index,
-        vector<char>& is_mine,
-        vector<int>& count_zero,
-        vector<int>& count_one,
-        vector<int>& result_ones,
-        int& result_total,
-        const Constraints& constraints,
-        const vector<vector<int>>& p2c
-    ) {
+    vector<char> is_mine;
+    vector<int> count_zero;
+    vector<int> count_one;
+    vector<int> result_ones;
+    int result_total;
+    Constraints constraints;
+    vector<vector<int>> p2c;
+    void dfs(int index) {
         if (index == p2c.size()) {
             result_total += 1;
             for(int i = 0; i < result_ones.size(); i++) {
@@ -451,7 +449,7 @@ class Solver {
             }
             if (violate == p2c[index].size()) {
                 is_mine[index] = false;
-                dfs(index + 1, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
+                dfs(index + 1);
                 violate--;
             }
             for (int i = 0; i <= violate; i++) {
@@ -470,7 +468,7 @@ class Solver {
             }
             if (violate == p2c[index].size()) {
                 is_mine[index] = true;
-                dfs(index + 1, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
+                dfs(index + 1);
                 violate--;
             }
             for (int i = 0; i <= violate; i++) {
@@ -508,7 +506,7 @@ class Solver {
         });
         assert(occurance[points[0]] >= occurance[points[points.size() - 1]]);
 
-        vector<vector<int>> p2c(points.size(), vector<int>());
+        p2c = vector<vector<int>>(points.size(), vector<int>());
         for(int i = 0; i < constraints.size(); i++) {
             for (int j = 0; j < points.size(); j++) {
                 if (constraints[i].positions.count(points[j])) {
@@ -516,13 +514,14 @@ class Solver {
                 }
             }
         }
-        vector<char> is_mine(points.size());
-        vector<int> count_zero(constraints.size(), 0);
-        vector<int> count_one(constraints.size(), 0);
+        this->constraints = constraints;
+        is_mine = vector<char>(points.size());
+        count_zero = vector<int>(constraints.size(), 0);
+        count_one = vector<int>(constraints.size(), 0);
 
-        vector<int> result_ones(points.size());
-        int result_total = 0;
-        dfs(0, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
+        result_ones = vector<int>(points.size());
+        result_total = 0;
+        dfs(0);
 
         if (backtrace_timeout) {
             return;
