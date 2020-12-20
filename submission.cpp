@@ -409,15 +409,21 @@ class Solver {
 
     void dfs(
         int index,
-        bitset<MAX_POINTS>& is_mine,
+        vector<char>& is_mine,
         vector<int>& count_zero,
         vector<int>& count_one,
-        vector<bitset<MAX_POINTS>>& results,
+        vector<int>& result_ones,
+        int& result_total,
         const Constraints& constraints,
         const vector<vector<int>>& p2c
     ) {
         if (index == p2c.size()) {
-            results.push_back(is_mine);
+            result_total += 1;
+            for(int i = 0; i < result_ones.size(); i++) {
+                if (is_mine[i]) {
+                    result_ones[i] += 1;
+                }
+            }
             return;
         }
 
@@ -429,7 +435,7 @@ class Solver {
             dbg(get_runtime());
             dbg(p2c.size());
             dbg(constraints.size());
-            dbg(results.size());
+            dbg(result_total);
             backtrace_timeout = true;
             return;
         }
@@ -445,7 +451,7 @@ class Solver {
             }
             if (violate == p2c[index].size()) {
                 is_mine[index] = false;
-                dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+                dfs(index + 1, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
                 violate--;
             }
             for (int i = 0; i <= violate; i++) {
@@ -464,7 +470,7 @@ class Solver {
             }
             if (violate == p2c[index].size()) {
                 is_mine[index] = true;
-                dfs(index + 1, is_mine, count_zero, count_one, results, constraints, p2c);
+                dfs(index + 1, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
                 violate--;
             }
             for (int i = 0; i <= violate; i++) {
@@ -510,18 +516,19 @@ class Solver {
                 }
             }
         }
-        bitset<MAX_POINTS> is_mine;
+        vector<char> is_mine(points.size());
         vector<int> count_zero(constraints.size(), 0);
         vector<int> count_one(constraints.size(), 0);
 
-        vector<bitset<MAX_POINTS>> results;
-        dfs(0, is_mine, count_zero, count_one, results, constraints, p2c);
+        vector<int> result_ones(points.size());
+        int result_total = 0;
+        dfs(0, is_mine, count_zero, count_one, result_ones, result_total, constraints, p2c);
 
         if (backtrace_timeout) {
             return;
         }
 
-        assert(!results.empty());
+        assert(result_total > 0);
 
         for (int i = 0; i < points.size(); i++) {
             const auto& p = points[i];
@@ -532,23 +539,14 @@ class Solver {
                 continue;
             }
 
-            int count_one = 0;
-            for(const auto& result : results) {
-                if (get_runtime() > MAX_RUNTIME * 0.95) {
-                    backtrace_timeout = true;
-                    return;
-                }
-
-                if (result[i]) {
-                    count_one += 1;
-                }
-            }
+            const int count_one = result_ones[i];
+            const int count_all = result_total;
             if (!backtrace_timeout && count_one == 0) {
                 update_safe(r, c);
-            } else if (!backtrace_timeout && count_one == results.size()) {
+            } else if (!backtrace_timeout && count_one == count_all) {
                 update_bomb(r, c);
             } else {
-                probabilities.push_back(make_pair((double)count_one/(double)results.size(), p));
+                probabilities.push_back(make_pair((double)count_one/(double)count_all, p));
             }
         }
     }
@@ -569,6 +567,8 @@ class Solver {
             }
         }
         dbg(next_commands.size());
+        //dbg(probabilities.size());
+        dbg(get_runtime(true) - runtime);
         sort(probabilities.begin(), probabilities.end());
         return probabilities;
     }
