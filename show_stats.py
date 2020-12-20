@@ -96,8 +96,19 @@ print('50t: {:.4f}'.format(np.median(score_values)))
 print('75t: {:.4f}'.format(np.percentile(score_values, 75)))
 print('95t: {:.4f}'.format(np.percentile(score_values, 95)))
 
+print('=== param stats ===')
+ds = sorted(set(p['d'] for p in params.values()))
+for d in ds:
+    print('d={}'.format(d))
+    values = score_values[[seed - first_seed for seed in seeds if params[seed]['d'] == d]]
+    print('  cnt: {}'.format(len(values)))
+    print('  avg: {:.4f}'.format(values.mean()))
+    print('  25t: {:.4f}'.format(np.percentile(values, 25)))
+    print('  50t: {:.4f}'.format(np.median(values)))
+    print('  75t: {:.4f}'.format(np.percentile(values, 75)))
+
 print('=== meta stats ===')
-reasons = set(m['reason'] for m in meta.values())
+reasons = sorted(set(m['reason'] for m in meta.values()))
 for reason in reasons:
     print('reason={}'.format(reason))
     values = score_values[[seed - first_seed for seed in seeds if meta[seed]['reason'] == reason]]
