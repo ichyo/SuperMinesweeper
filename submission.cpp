@@ -634,16 +634,22 @@ class Solver {
         const int all = grid_unknown_count;
         const double default_prob = (double)rest/(double)all;
 
-        function<Command()> factory = [this]() { return this->choose_random_unknown(); };
+        function<Command()> factory = [this]() {
+            return this->choose_random_unknown();
+        };
         double prob = default_prob;
         bool random_guess = true;
 
         if (!probabilities.empty()) {
             const auto best = probabilities[0];
             dbg(best);
-            factory = [best]() { return Command::open(best.second.first, best.second.second); };
-            prob = best.first;
-            random_guess = false;
+            dbg(default_prob);
+            if (best.first <= default_prob) {
+                factory = [best]() { return Command::open(best.second.first, best.second.second); };
+                prob = best.first;
+                random_guess = false;
+            }
+            dbg(random_guess);
         }
 
         const double ratio = calc_uncover_ratio();
@@ -779,6 +785,7 @@ class Solver {
     }
 
     void judge_update_bomb(int row, int col, long runtime) {
+        cerr << "BOMB!" << endl;
         //dbg(runtime);
         assert(judge_grid[row][col].is_hidden());
         judge_grid[row][col].set_bomb();
