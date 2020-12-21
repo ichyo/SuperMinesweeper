@@ -601,25 +601,69 @@ class Solver {
         cerr.flush();
     }
 
-    double estimate_final_score(double prob) {
-        if (params.D != 1) {
-            return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+    double find_maximum_score(
+        const int all,
+        const int rest,
+        const int M, // mine_hit
+        const double g
+    ){
+        const int cur = all - rest;
+        const auto f = [&](double x){
+            double s1 = (cur + x) / all;
+            double s2 = 1.0 / (1.0 + M + g * x);
+            return s1 * s2;
+        };
+        double low = 0;
+        double high = rest;
+        REP(_, 100) {
+            const double c1 = (low * 2 + high) / 3;
+            const double c2 = (low + high * 2) / 3;
+            if (f(c1) < f(c2)) {
+                low = c1;
+            } else {
+                high = c2;
+            }
         }
-        const int rest = params.N * params.N - params.M - score_uncover;
-        const double a = 0.24931335;
-        const double b = 17.86378303;
-        const double c = -2.76674817;
-        const double r = (double)params.M/params.N/params.N;
-        const double k = 0.5; // why required?
-        const double estimated_add = (a * exp(b * r) + c) / 1000.0 * rest * k;
-        const double estimated_final_score = prob * (1.0 / (1.0 + score_mine_hit + 1.0 + estimated_add))
-             + (1 - prob) * (1.0 / (1.0 + score_mine_hit + estimated_add));
+        return f(low);
+    }
 
-        dbg(estimated_add);
-        dbg(estimated_final_score);
-        dbg(1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob));
+    double estimate_best_score(double prob) {
+        map<int, tuple<double, double, double>> param_map;
+        param_map[1] = make_tuple(0.24931335, 17.86378303, -2.76674817);
+        //param_map[2] = make_tuple(4.52466102e-03, 2.69382644e+01, -1.37446064e-01);
 
-        return estimated_final_score;
+        if (param_map.count(params.D)) {
+            const int all = params.N * params.N - params.M;
+            const int cur = score_uncover;
+            const int rest = all - cur;
+
+            const double r = (double)params.M/(double)params.N/(double)params.N; // ratio (0.1~0.3)
+
+            const double a = get<0>(param_map[params.D]);
+            const double b = get<1>(param_map[params.D]);
+            const double c = get<2>(param_map[params.D]);
+
+            const double g = (a * exp(b * r) + c) / 1000.0;
+
+            const double k = 0.5;
+
+            const double maximum_score_good = 1.0 / (1.0 + score_mine_hit + g * rest * k);
+            const double maximum_score_bad = 1.0 / (1.0 + score_mine_hit + 1 + g * rest * k);
+
+            //const double maximum_score_good = find_maximum_score(all, rest, score_mine_hit, g * k);
+            //const double maximum_score_bad = find_maximum_score(all, rest, score_mine_hit + 1, g * k);
+
+            const double result = prob * maximum_score_bad + (1 - prob) * maximum_score_good;
+
+            dbg(score());
+            dbg(maximum_score_good);
+            dbg(maximum_score_bad);
+            dbg(result);
+
+            return result;
+        }
+
+        return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
     }
 
     Command decide_next_command() {
@@ -675,7 +719,7 @@ class Solver {
         }
 
         const double ratio = calc_uncover_ratio();
-        const bool do_invest = score() <= estimate_final_score(prob);
+        const bool do_invest = score() <= estimate_best_score(prob);
         if (do_invest) {
 
             stats.guess_count += 1;

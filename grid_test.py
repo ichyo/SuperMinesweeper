@@ -11,7 +11,6 @@ def run(d, r, case_num=1000, n=50):
     print(csv_path)
     subprocess.run(['python', './mine_hit_stats.py', csv_path], check=True)
 
-ds = [1, 2, 4, 5, 8, 9, 10]
-for d in [1]:
+for d in [2, 4, 5, 8, 9, 10]:
     for r in range(10, 31, 2):
         run(d, r)
