@@ -129,17 +129,6 @@ print('25t: {:.4f}'.format(np.percentile(score_values, 25)))
 print('50t: {:.4f}'.format(np.median(score_values)))
 print('75t: {:.4f}'.format(np.percentile(score_values, 75)))
 
-if all_max_score_mode:
-    norm_score_values = np.array([scores[seed] / meta[seed]['all_max_score'] if meta[seed]['all_max_score'] > 0 else 0.0 for seed in seeds])
-    print('=== norm score stats ===')
-    print('avg: {:.4f}'.format(norm_score_values.mean()))
-    print('std: {:.4f}'.format(norm_score_values.std()))
-    print('min: {:.4f}'.format(norm_score_values.min()))
-    print('05t: {:.4f}'.format(np.percentile(norm_score_values, 5)))
-    print('25t: {:.4f}'.format(np.percentile(norm_score_values, 25)))
-    print('50t: {:.4f}'.format(np.median(norm_score_values)))
-    print('75t: {:.4f}'.format(np.percentile(norm_score_values, 75)))
-
 print('=== param stats ===')
 ds = sorted(set(p['d'] for p in params.values()))
 for d in ds:
@@ -168,6 +157,24 @@ print('  avg: {:.4f}'.format(values.mean()))
 print('  25t: {:.4f}'.format(np.percentile(values, 25)))
 print('  50t: {:.4f}'.format(np.median(values)))
 print('  75t: {:.4f}'.format(np.percentile(values, 75)))
+
+if all_max_score_mode:
+    norm_score_values = np.array([scores[seed] / meta[seed]['all_max_score'] if meta[seed]['all_max_score'] > 0 else 0.0 for seed in seeds])
+    print('=== norm score stats ===')
+    print('avg: {:.4f}'.format(norm_score_values.mean()))
+    print('std: {:.4f}'.format(norm_score_values.std()))
+    print('min: {:.4f}'.format(norm_score_values.min()))
+    print('05t: {:.4f}'.format(np.percentile(norm_score_values, 5)))
+    print('25t: {:.4f}'.format(np.percentile(norm_score_values, 25)))
+    print('50t: {:.4f}'.format(np.median(norm_score_values)))
+    print('75t: {:.4f}'.format(np.percentile(norm_score_values, 75)))
+
+    for d in ds:
+        print('d={}'.format(d))
+        values = norm_score_values[[seed - first_seed for seed in seeds if params[seed]['d'] == d]]
+        print('  avg: {:.4f}'.format(values.mean()))
+        print('  25t: {:.4f}'.format(np.percentile(values, 25)))
+        print('  50t: {:.4f}'.format(np.median(values)))
 
 
 csv_path = os.path.join(base_dir, 'scores.csv')
