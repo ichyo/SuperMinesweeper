@@ -166,6 +166,8 @@ namespace rng {
 
 const int MAX_N = 50;
 
+const int CANCEL_LIMIT = MAX_RUNTIME / 14;
+
 const int ESTIMATED_ADD_BOMB = 4; // TODO: tuning here
 
 using Pos = pair<int, int>;
@@ -568,6 +570,9 @@ class Solver {
     int _dfs_result_total;
     Constraints _dfs_constraints;
     vector<vector<int>> _dfs_p2c;
+    int _dfs_first_one_index;
+    bool _dfs_cancel;
+
     void dfs(int index){
         if (index == _dfs_p2c.size()) {
             _dfs_result_total += 1;
@@ -583,12 +588,20 @@ class Solver {
             return;
         }
 
+        if (_dfs_cancel) {
+            return;
+        }
+
         if (get_runtime() > MAX_RUNTIME * 0.95) {
             dbg(get_runtime());
             dbg(_dfs_p2c.size());
             dbg(_dfs_constraints.size());
             dbg(_dfs_result_total);
             backtrace_timeout = true;
+            return;
+        }
+        if (params.D >= 8 && get_runtime() - runtime > CANCEL_LIMIT) {
+            _dfs_cancel = true;
             return;
         }
 
@@ -612,6 +625,10 @@ class Solver {
             }
         }
         {
+            if (index < _dfs_first_one_index) {
+                _dfs_first_one_index = index;
+            }
+
             int violate = _dfs_p2c[index].size();
             for (int i = 0; i < _dfs_p2c[index].size(); i++) {
                 const int x = _dfs_p2c[index][i];
@@ -672,9 +689,16 @@ class Solver {
         _dfs_count_one = vector<int>(constraints.size(), 0);
         _dfs_result_ones = vector<int>(points.size());
         _dfs_result_total = 0;
+        _dfs_first_one_index = points.size();
+        _dfs_cancel = false;
         dfs(0);
 
         if (backtrace_timeout) {
+            return;
+        }
+
+        if (_dfs_cancel) {
+            probabilities.push_back(make_pair(0.2, points[0])); // make to pick up first
             return;
         }
 
@@ -711,6 +735,7 @@ class Solver {
         vector<pair<double, Pos>> probabilities;
         for (const auto& group : constraint_groups) {
             backtrace(group, probabilities);
+            dbg(_dfs_result_total);
             if (backtrace_timeout) {
                 dbg(constraint_groups.size());
                 break;
