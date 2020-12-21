@@ -5,6 +5,8 @@ import csv
 import collections
 import numpy as np
 
+import pymysql.cursors
+
 parser = argparse.ArgumentParser(description='Show stats of test')
 
 parser.add_argument('base_dir')
@@ -88,6 +90,34 @@ for seed in seeds:
         'max_score': max_score,
     }
 
+all_max_score_mode = info['additional_args'] is None
+
+if all_max_score_mode:
+    connection = pymysql.connect(host='localhost',
+                                 user='mm122',
+                                 password='hWWz@zV3',
+                                 db='MM122',
+                                 charset='utf8mb4',
+                                 cursorclass=pymysql.cursors.DictCursor)
+
+    with connection.cursor() as cursor:
+        sql = 'INSERT INTO max_scores (seed, max_score) VALUES (%s, %s) ON DUPLICATE KEY UPDATE max_score = GREATEST(max_score, %s)'
+        for seed in seeds:
+            max_score = meta[seed]['max_score']
+            cursor.execute(sql, (seed, max_score, max_score))
+
+    connection.commit()
+
+    with connection.cursor() as cursor:
+        sql = 'SELECT max_score FROM max_scores WHERE seed = %s AND arg_n = -1 AND arg_m = -1 AND arg_d = -1'
+        for seed in seeds:
+            cursor.execute(sql, (seed,))
+            result = cursor.fetchone()
+            meta[seed]['all_max_score'] = result['max_score']
+else:
+    for seed in seeds:
+        meta[seed]['all_max_score'] = meta[seed]['max_score']
+
 score_values = np.array(list(scores.values()))
 
 print('=== score stats ===')
@@ -98,7 +128,17 @@ print('05t: {:.4f}'.format(np.percentile(score_values, 5)))
 print('25t: {:.4f}'.format(np.percentile(score_values, 25)))
 print('50t: {:.4f}'.format(np.median(score_values)))
 print('75t: {:.4f}'.format(np.percentile(score_values, 75)))
-print('95t: {:.4f}'.format(np.percentile(score_values, 95)))
+
+if all_max_score_mode:
+    norm_score_values = np.array([scores[seed] / meta[seed]['all_max_score'] if meta[seed]['all_max_score'] > 0 else 0.0 for seed in seeds])
+    print('=== norm score stats ===')
+    print('avg: {:.4f}'.format(norm_score_values.mean()))
+    print('std: {:.4f}'.format(norm_score_values.std()))
+    print('min: {:.4f}'.format(norm_score_values.min()))
+    print('05t: {:.4f}'.format(np.percentile(norm_score_values, 5)))
+    print('25t: {:.4f}'.format(np.percentile(norm_score_values, 25)))
+    print('50t: {:.4f}'.format(np.median(norm_score_values)))
+    print('75t: {:.4f}'.format(np.percentile(norm_score_values, 75)))
 
 print('=== param stats ===')
 ds = sorted(set(p['d'] for p in params.values()))
@@ -133,7 +173,7 @@ print('  75t: {:.4f}'.format(np.percentile(values, 75)))
 csv_path = os.path.join(base_dir, 'scores.csv')
 with open(csv_path, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score', 'max_score', 'reason', 'runtime', 'uncover_ratio', 'mine_hit', 'guess_count', 'random_guess_count'])
+    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score', 'max_score', 'all_max_score', 'reason', 'runtime', 'uncover_ratio', 'mine_hit', 'guess_count', 'random_guess_count'])
     for seed in seeds:
         n = params[seed]['n']
         m = params[seed]['m']
@@ -145,5 +185,6 @@ with open(csv_path, 'w') as f:
         guess_count = meta[seed]['guess_count']
         random_guess_count = meta[seed]['random_guess_count']
         max_score = meta[seed]['max_score']
-        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed], max_score, reason, runtime, uncover_ratio, mine_hit, guess_count, random_guess_count])
+        all_max_score = meta[seed]['all_max_score']
+        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed], max_score, all_max_score, reason, runtime, uncover_ratio, mine_hit, guess_count, random_guess_count])
 print('Written into {}'.format(csv_path))

@@ -40,7 +40,7 @@ echo "time_limit: ${TL}" | tee -a $OUTPUT/info.yml
 echo "first_seed: ${BASE}" | tee -a $OUTPUT/info.yml
 echo "case_num: ${CASE}" | tee -a $OUTPUT/info.yml
 echo "start_time: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a $OUTPUT/info.yml
-echo "additional_args: ${MORE_ARG}"
+echo "additional_args: ${MORE_ARG}" | tee -a $OUTPUT/info.yml
 
 echo ""
 echo $OUTPUT
