@@ -632,6 +632,10 @@ class Solver {
         param_map[1] = make_tuple(0.24931335, 17.86378303, -2.76674817);
         //param_map[2] = make_tuple(4.52466102e-03, 2.69382644e+01, -1.37446064e-01);
 
+        map<int, double> k_map;
+        k_map[1] = 0.5;
+        //k_map[2] = 0.5;
+
         if (param_map.count(params.D)) {
             const int all = params.N * params.N - params.M;
             const int cur = score_uncover;
@@ -645,7 +649,7 @@ class Solver {
 
             const double g = (a * exp(b * r) + c) / 1000.0;
 
-            const double k = 0.5;
+            const double k = k_map[params.D];
 
             const double maximum_score_good = 1.0 / (1.0 + score_mine_hit + g * rest * k);
             const double maximum_score_bad = 1.0 / (1.0 + score_mine_hit + 1 + g * rest * k);
