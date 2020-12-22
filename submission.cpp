@@ -896,13 +896,6 @@ class Solver {
         const double ratio = calc_uncover_ratio();
         const bool do_invest = score() <= estimate_best_score(prob);
 
-        /*
-        if (prob == 0.0) {
-            // when dfs is cancelled
-            do_invest = do_invest || (score() <= 1.0 / (1 + score_mine_hit + 1.0));
-        }
-        */
-
         if (do_invest) {
             stats.guess_count += 1;
             if (random_guess) {
