@@ -2,7 +2,7 @@
 
 set -eu
 
-TL=7500 # msec
+TL=5000 # msec
 CASE=200
 
 THREADS=6

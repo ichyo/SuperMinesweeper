@@ -16,7 +16,7 @@
 
 #ifdef LOCAL_TEST
 #include "./dbg.hpp"
-#define MAX_RUNTIME 7500
+#define MAX_RUNTIME 5000
 #else
 #define dbg(...)
 #define MAX_RUNTIME 10000

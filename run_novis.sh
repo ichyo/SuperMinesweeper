@@ -2,6 +2,7 @@
 
 set -eu
 
+TLE=5000
 SEED=1
 EXEC=./submission
 
@@ -20,4 +21,4 @@ shift $((OPTIND-1))
 
 make
 
-java -jar tester/tester.jar -exec $EXEC -seed $SEED -delay 0 -novis -noSummary -saveAll /tmp/novis/io -screen 2 -timeLimit 7500 $MORE_ARG
+java -jar tester/tester.jar -exec $EXEC -seed $SEED -delay 0 -novis -noSummary -saveAll /tmp/novis/io -screen 2 -timeLimit $TLE $MORE_ARG
