@@ -592,6 +592,7 @@ class Solver {
         }
 
         if (get_runtime() > MAX_RUNTIME * 0.95) {
+            cerr << "dfs timeout!" << endl;
             dbg(get_runtime());
             dbg(_dfs_p2c.size());
             dbg(_dfs_constraints.size());
@@ -692,7 +693,16 @@ class Solver {
         }
 
         if (_dfs_cancel) {
-            probabilities.push_back(make_pair(0.0, points[0])); // make to pick up first
+            cerr << "cancel!" << endl;
+            for(int i = 0; i < points.size(); i++) {
+                if (_dfs_result_total == _dfs_result_ones[i]) {
+                    continue;
+                }
+                dbg(_dfs_result_total);
+                dbg(_dfs_result_ones[i]);
+                probabilities.push_back(make_pair(0.0, points[i])); // make to pick up first
+                break;
+            }
             return;
         }
 
@@ -724,6 +734,8 @@ class Solver {
             return vector<pair<double, Pos>>();
         }
 
+        cerr << "global search!" << endl;
+
         const auto constraints = extract_constraints();
         const auto constraint_groups = split_constraints(constraints);
         vector<pair<double, Pos>> probabilities;
@@ -731,12 +743,10 @@ class Solver {
             backtrace(group, probabilities);
             dbg(_dfs_result_total);
             if (backtrace_timeout) {
-                dbg(constraint_groups.size());
                 break;
             }
         }
         dbg(next_commands.size());
-        //dbg(probabilities.size());
         dbg(get_runtime(true) - runtime);
         sort(probabilities.begin(), probabilities.end());
         return probabilities;
@@ -817,10 +827,12 @@ class Solver {
 
             const double result = prob * maximum_score_bad + (1 - prob) * maximum_score_good;
 
+            /*
             dbg(score());
             dbg(maximum_score_good);
             dbg(maximum_score_bad);
             dbg(result);
+            */
 
             return result;
         }
@@ -870,6 +882,7 @@ class Solver {
 
         if (!probabilities.empty()) {
             const auto best = probabilities[0];
+            cerr << "guess!" << endl;
             dbg(best);
             dbg(default_prob);
             if (best.first <= default_prob) {
@@ -899,6 +912,7 @@ class Solver {
             return factory();
         }
 
+        cerr << "stop!" << endl;
         dbg(score());
         dbg(ratio);
         dbg(score_mine_hit);
