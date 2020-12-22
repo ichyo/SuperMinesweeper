@@ -695,7 +695,7 @@ class Solver {
         if (_dfs_cancel) {
             cerr << "cancel!" << endl;
             for(int i = 0; i < points.size(); i++) {
-                if (_dfs_result_total == _dfs_result_ones[i]) {
+                if (_dfs_result_total > 0 && _dfs_result_total == _dfs_result_ones[i]) {
                     continue;
                 }
                 dbg(_dfs_result_total);
@@ -895,8 +895,15 @@ class Solver {
 
         const double ratio = calc_uncover_ratio();
         const bool do_invest = score() <= estimate_best_score(prob);
-        if (do_invest) {
 
+        /*
+        if (prob == 0.0) {
+            // when dfs is cancelled
+            do_invest = do_invest || (score() <= 1.0 / (1 + score_mine_hit + 1.0));
+        }
+        */
+
+        if (do_invest) {
             stats.guess_count += 1;
             if (random_guess) {
                 stats.random_guess_count += 1;
@@ -913,6 +920,7 @@ class Solver {
         }
 
         cerr << "stop!" << endl;
+        dbg(prob);
         dbg(score());
         dbg(ratio);
         dbg(score_mine_hit);
