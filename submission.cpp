@@ -692,7 +692,7 @@ class Solver {
         }
 
         if (_dfs_cancel) {
-            probabilities.push_back(make_pair(0.2, points[0])); // make to pick up first
+            probabilities.push_back(make_pair(0.0, points[0])); // make to pick up first
             return;
         }
 
