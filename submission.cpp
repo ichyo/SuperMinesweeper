@@ -168,7 +168,6 @@ const int MAX_N = 50;
 
 const int CANCEL_LIMIT = MAX_RUNTIME / 14;
 
-const int ESTIMATED_ADD_BOMB = 4; // TODO: tuning here
 
 using Pos = pair<int, int>;
 
@@ -837,7 +836,16 @@ class Solver {
             return result;
         }
 
-        return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        if (params.D >= 4 && params.D <= 5) {
+            const double ESTIMATED_ADD_BOMB = 4.0;
+            return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        } else if (params.D >= 9) {
+            const double ESTIMATED_ADD_BOMB = 4.0;
+            return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        } else {
+            const double ESTIMATED_ADD_BOMB = 4.0;
+            return 1.0 / (1.0 + score_mine_hit + ESTIMATED_ADD_BOMB * prob);
+        }
     }
 
     Command decide_next_command() {
