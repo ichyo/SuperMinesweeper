@@ -569,7 +569,6 @@ class Solver {
     int _dfs_result_total;
     Constraints _dfs_constraints;
     vector<vector<int>> _dfs_p2c;
-    int _dfs_first_one_index;
     bool _dfs_cancel;
 
     int _dfs_mines_len;
@@ -624,10 +623,6 @@ class Solver {
             }
         }
         {
-            if (index < _dfs_first_one_index) {
-                _dfs_first_one_index = index;
-            }
-
             int violate = _dfs_p2c[index].size();
             for (int i = 0; i < _dfs_p2c[index].size(); i++) {
                 const int x = _dfs_p2c[index][i];
@@ -688,7 +683,6 @@ class Solver {
         _dfs_count_one = vector<int>(constraints.size(), 0);
         _dfs_result_ones = vector<int>(points.size());
         _dfs_result_total = 0;
-        _dfs_first_one_index = points.size();
         _dfs_cancel = false;
         _dfs_mines_len = 0;
         dfs(0);
