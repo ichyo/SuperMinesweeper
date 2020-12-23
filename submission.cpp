@@ -747,6 +747,11 @@ class Solver {
         {
             map<vector<int>, int> group_id;
             for(int i = 0; i < points.size(); i++) {
+                if (params.D <= 4) { // TODO: 5 or 3?
+                    point_groups.push_back(vector<int>(1, i));
+                    continue;
+                }
+
                 if (!group_id.count(p2c[i])) {
                     group_id[p2c[i]] = point_groups.size();
                     point_groups.push_back(vector<int>());
