@@ -384,12 +384,14 @@ class Command {
 struct Stats {
     int guess_count = 0;
     int random_guess_count = 0;
+    int cancel_count = 0;
     double max_score = 0.0;
 
     void print() {
         cerr << "guess_count: " << guess_count << endl;
         cerr << "random_guess_count: " << random_guess_count << endl;
         cerr << "max_score: " << max_score << endl;
+        cerr << "cancel_count: " << cancel_count << endl;
     }
 };
 
@@ -693,6 +695,7 @@ class Solver {
 
         if (_dfs_cancel) {
             cerr << "cancel!" << endl;
+            stats.cancel_count ++;
             for(int i = 0; i < points.size(); i++) {
                 if (_dfs_result_total > 0 && _dfs_result_total == _dfs_result_ones[i]) {
                     continue;

@@ -62,6 +62,7 @@ for seed in seeds:
     guess_count = 0
     random_guess_count = 0
     max_score = 0.0
+    cancel_count = 0
     with open(input_path) as f:
         for s in f.readlines():
             if s.startswith("reason: "):
@@ -78,6 +79,8 @@ for seed in seeds:
                 random_guess_count = int(s.split(" ")[1].strip())
             if s.startswith("max_score: "):
                 max_score = float(s.split(" ")[1].strip())
+            if s.startswith("cancel_count: "):
+                cancel_count = int(s.split(" ")[1].strip())
         if reason == "":
             print('Warning: seed={} has no reason'.format(seed))
     meta[seed] = {
@@ -88,6 +91,7 @@ for seed in seeds:
         'guess_count': guess_count,
         'random_guess_count': random_guess_count,
         'max_score': max_score,
+        'cancel_count': cancel_count,
     }
 
 all_max_score_mode = info['additional_args'] is None
@@ -180,7 +184,7 @@ if all_max_score_mode:
 csv_path = os.path.join(base_dir, 'scores.csv')
 with open(csv_path, 'w') as f:
     writer = csv.writer(f)
-    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score', 'max_score', 'all_max_score', 'reason', 'runtime', 'uncover_ratio', 'mine_hit', 'guess_count', 'random_guess_count'])
+    writer.writerow(['seed', 'n', 'm', 'd', 'density', 'score', 'r_score', 'max_score', 'all_max_score', 'reason', 'runtime', 'uncover_ratio', 'mine_hit', 'guess_count', 'random_guess_count', 'cancel_count'])
     for seed in seeds:
         n = params[seed]['n']
         m = params[seed]['m']
@@ -193,5 +197,8 @@ with open(csv_path, 'w') as f:
         random_guess_count = meta[seed]['random_guess_count']
         max_score = meta[seed]['max_score']
         all_max_score = meta[seed]['all_max_score']
-        writer.writerow([seed, n, m, d, float(m) / float(n * n), scores[seed], max_score, all_max_score, reason, runtime, uncover_ratio, mine_hit, guess_count, random_guess_count])
+        score = scores[seed]
+        cancel_count = meta[seed]['cancel_count']
+        r_score = min(score / all_max_score, 1.0)
+        writer.writerow([seed, n, m, d, float(m) / float(n * n), score, r_score, max_score, all_max_score, reason, runtime, uncover_ratio, mine_hit, guess_count, random_guess_count, cancel_count])
 print('Written into {}'.format(csv_path))
