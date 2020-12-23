@@ -19,6 +19,7 @@
 #define MAX_RUNTIME 5000
 #else
 #define dbg(...)
+#define assert(...)
 #define MAX_RUNTIME 10000
 #endif
 
@@ -816,6 +817,7 @@ class Solver {
                     update_bomb(r, c);
                 }
             } else {
+                assert(count_one > 1e-6 && ((double)count_all - count_one) > 1e-6);
                 for(int j : point_groups[i]) {
                     const auto& p = points[j];
                     int r, c;
