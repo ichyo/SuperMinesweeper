@@ -566,20 +566,26 @@ class Solver {
 
     vector<int> _dfs_count_zero;
     vector<int> _dfs_count_one;
-    vector<int> _dfs_result_ones;
+
+    vector<double> _dfs_result_ones;
     int _dfs_result_total;
+
     Constraints _dfs_constraints;
-    vector<vector<int>> _dfs_p2c;
     bool _dfs_cancel;
 
+    vector<vector<int>> _dfs_p2c;
+    vector<int> _dfs_p_count;
+
+    // no init
     int _dfs_mines_len;
     int _dfs_mines[MAX_N * MAX_N];
+    double _dfs_mines_add[MAX_N * MAX_N];
 
     void dfs(int index){
         if (index == _dfs_p2c.size()) {
             _dfs_result_total += 1;
             for (int i = 0; i < _dfs_mines_len; i++) {
-                _dfs_result_ones[_dfs_mines[i]] += 1;
+                _dfs_result_ones[_dfs_mines[i]] += _dfs_mines_add[i];
             }
             return;
         }
@@ -606,42 +612,72 @@ class Solver {
             return;
         }
 
-        {
-            int violate = _dfs_p2c[index].size();
-            for (int i = 0; i < _dfs_p2c[index].size(); i++) {
-                const int x = _dfs_p2c[index][i];
-                if (++_dfs_count_zero[x] > _dfs_constraints[x].max_zero()) {
-                    violate = i;
-                    break;
+        if (_dfs_p_count[index] == 1) {
+            {
+                int violate = _dfs_p2c[index].size();
+                for (int i = 0; i < _dfs_p2c[index].size(); i++) {
+                    const int x = _dfs_p2c[index][i];
+                    if (++_dfs_count_zero[x] > _dfs_constraints[x].max_zero()) {
+                        violate = i;
+                        break;
+                    }
+                }
+                if (violate == _dfs_p2c[index].size()) {
+                    dfs(index + 1);
+                    violate--;
+                }
+                for (int i = 0; i <= violate; i++) {
+                    const int x = _dfs_p2c[index][i];
+                    --_dfs_count_zero[x];
                 }
             }
-            if (violate == _dfs_p2c[index].size()) {
-                dfs(index + 1);
-                violate--;
-            }
-            for (int i = 0; i <= violate; i++) {
-                const int x = _dfs_p2c[index][i];
-                --_dfs_count_zero[x];
-            }
-        }
-        {
-            int violate = _dfs_p2c[index].size();
-            for (int i = 0; i < _dfs_p2c[index].size(); i++) {
-                const int x = _dfs_p2c[index][i];
-                if (++_dfs_count_one[x] > _dfs_constraints[x].max_one()) {
-                    violate = i;
-                    break;
+            {
+                int violate = _dfs_p2c[index].size();
+                for (int i = 0; i < _dfs_p2c[index].size(); i++) {
+                    const int x = _dfs_p2c[index][i];
+                    if (++_dfs_count_one[x] > _dfs_constraints[x].max_one()) {
+                        violate = i;
+                        break;
+                    }
+                }
+                if (violate == _dfs_p2c[index].size()) {
+                    _dfs_mines[_dfs_mines_len] = index;
+                    _dfs_mines_add[_dfs_mines_len] = 1.0;
+                    _dfs_mines_len++;
+                    dfs(index + 1);
+                    violate--;
+                    _dfs_mines_len--;
+                }
+                for (int i = 0; i <= violate; i++) {
+                    const int x = _dfs_p2c[index][i];
+                    --_dfs_count_one[x];
                 }
             }
-            if (violate == _dfs_p2c[index].size()) {
-                _dfs_mines[_dfs_mines_len++] = index;
-                dfs(index + 1);
-                violate--;
-                _dfs_mines_len--;
-            }
-            for (int i = 0; i <= violate; i++) {
-                const int x = _dfs_p2c[index][i];
-                --_dfs_count_one[x];
+        } else {
+            for (int use = 0; use <= _dfs_p_count[index]; use++) {
+                int violate = _dfs_p2c[index].size();
+                for (int i = 0; i < _dfs_p2c[index].size(); i++) {
+                    const int x = _dfs_p2c[index][i];
+                    _dfs_count_zero[x] += _dfs_p_count[index] - use;
+                    _dfs_count_one[x] += use;
+                    if ((_dfs_count_zero[x] > _dfs_constraints[x].max_zero())
+                            || (_dfs_count_one[x] > _dfs_constraints[x].max_one())) {
+                        violate = i;
+                        break;
+                    }
+                }
+                if (violate == _dfs_p2c[index].size()) {
+                    _dfs_mines[_dfs_mines_len] = index;
+                    _dfs_mines_add[_dfs_mines_len] = (double)use/_dfs_p_count[index];
+                    dfs(index + 1);
+                    violate--;
+                    _dfs_mines_len--;
+                }
+                for (int i = 0; i <= violate; i++) {
+                    const int x = _dfs_p2c[index][i];
+                    _dfs_count_zero[x] -= _dfs_p_count[index] - use;
+                    _dfs_count_one[x] -= use;
+                }
             }
         }
     }
@@ -675,18 +711,43 @@ class Solver {
         for(int i = 0; i < constraints.size(); i++) {
             for (int j = 0; j < points.size(); j++) {
                 if (constraints[i].positions.count(points[j])) {
+                    cerr << j << " ";
                     _dfs_p2c[j].push_back(i);
                 }
+            }
+            cerr << endl;
+        }
+        cerr << "---" << endl;
+        for(int i = 0; i < points.size(); i++) {
+            for (int j : _dfs_p2c[i]) {
+                cerr << j << " ";
+            }
+            cerr << endl;
+        }
+        cerr << "---" << endl;
+        map<vector<int>, int> counter;
+        for(int i = 0; i < points.size(); i++) {
+            counter[_dfs_p2c[i]] += 1;
+        }
+        for(auto p : counter) {
+            if (p.second >= 2) {
+                cerr << "[";
+                for(auto x : p.first) {
+                    cerr << x << " ";
+                }
+                cerr << "] " << p.second << endl;
             }
         }
 
         this->_dfs_constraints = constraints;
         _dfs_count_zero = vector<int>(constraints.size(), 0);
         _dfs_count_one = vector<int>(constraints.size(), 0);
-        _dfs_result_ones = vector<int>(points.size());
+        _dfs_result_ones = vector<double>(points.size());
         _dfs_result_total = 0;
         _dfs_cancel = false;
         _dfs_mines_len = 0;
+        _dfs_p_count = vector<int>(points.size(), 1);
+
         dfs(0);
 
         if (backtrace_timeout) {
