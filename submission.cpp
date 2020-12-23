@@ -19,7 +19,6 @@
 #define MAX_RUNTIME 5000
 #else
 #define dbg(...)
-#define assert(...)
 #define MAX_RUNTIME 10000
 #endif
 
