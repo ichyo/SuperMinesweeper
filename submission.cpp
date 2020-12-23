@@ -645,8 +645,8 @@ class Solver {
                     _dfs_mines_add[_dfs_mines_len] = 1.0;
                     _dfs_mines_len++;
                     dfs(index + 1);
-                    violate--;
                     _dfs_mines_len--;
+                    violate--;
                 }
                 for (int i = 0; i <= violate; i++) {
                     const int x = _dfs_p2c[index][i];
@@ -654,6 +654,7 @@ class Solver {
                 }
             }
         } else {
+            assert(_dfs_p_count[index] >= 2);
             for (int use = 0; use <= _dfs_p_count[index]; use++) {
                 int violate = _dfs_p2c[index].size();
                 for (int i = 0; i < _dfs_p2c[index].size(); i++) {
@@ -669,9 +670,10 @@ class Solver {
                 if (violate == _dfs_p2c[index].size()) {
                     _dfs_mines[_dfs_mines_len] = index;
                     _dfs_mines_add[_dfs_mines_len] = (double)use/_dfs_p_count[index];
+                    _dfs_mines_len++;
                     dfs(index + 1);
-                    violate--;
                     _dfs_mines_len--;
+                    violate--;
                 }
                 for (int i = 0; i <= violate; i++) {
                     const int x = _dfs_p2c[index][i];
@@ -707,28 +709,28 @@ class Solver {
         });
         assert(occurance[points[0]] >= occurance[points[points.size() - 1]]);
 
-        _dfs_p2c = vector<vector<int>>(points.size(), vector<int>());
+        vector<vector<int>> p2c(points.size(), vector<int>());
         for(int i = 0; i < constraints.size(); i++) {
             for (int j = 0; j < points.size(); j++) {
                 if (constraints[i].positions.count(points[j])) {
-                    cerr << j << " ";
-                    _dfs_p2c[j].push_back(i);
+                    p2c[j].push_back(i);
                 }
             }
-            cerr << endl;
         }
-        cerr << "---" << endl;
+        map<vector<int>, int> counter;
         for(int i = 0; i < points.size(); i++) {
-            for (int j : _dfs_p2c[i]) {
+            counter[p2c[i]] += 1;
+        }
+
+
+        /*
+        for(int i = 0; i < points.size(); i++) {
+            for (int j : p2c[i]) {
                 cerr << j << " ";
             }
             cerr << endl;
         }
         cerr << "---" << endl;
-        map<vector<int>, int> counter;
-        for(int i = 0; i < points.size(); i++) {
-            counter[_dfs_p2c[i]] += 1;
-        }
         for(auto p : counter) {
             if (p.second >= 2) {
                 cerr << "[";
@@ -738,15 +740,34 @@ class Solver {
                 cerr << "] " << p.second << endl;
             }
         }
+        */
+
+        vector<vector<int>> point_groups;
+        {
+            map<vector<int>, int> group_id;
+            for(int i = 0; i < points.size(); i++) {
+                if (!group_id.count(p2c[i])) {
+                    group_id[p2c[i]] = point_groups.size();
+                    point_groups.push_back(vector<int>());
+                }
+                point_groups[group_id[p2c[i]]].push_back(i);
+            }
+        }
+
+        _dfs_p_count = vector<int>(point_groups.size());
+        _dfs_p2c = vector<vector<int>>(point_groups.size());
+        for(int i = 0; i < point_groups.size(); i++) {
+            _dfs_p2c[i] = p2c[point_groups[i][0]];
+            _dfs_p_count[i] = point_groups[i].size();
+        }
 
         this->_dfs_constraints = constraints;
         _dfs_count_zero = vector<int>(constraints.size(), 0);
         _dfs_count_one = vector<int>(constraints.size(), 0);
-        _dfs_result_ones = vector<double>(points.size());
+        _dfs_result_ones = vector<double>(point_groups.size());
         _dfs_result_total = 0;
         _dfs_cancel = false;
         _dfs_mines_len = 0;
-        _dfs_p_count = vector<int>(points.size(), 1);
 
         dfs(0);
 
@@ -757,13 +778,13 @@ class Solver {
         if (_dfs_cancel) {
             cerr << "cancel!" << endl;
             stats.cancel_count ++;
-            for(int i = 0; i < points.size(); i++) {
+            for(int i = 0; i < point_groups.size(); i++) {
                 if (_dfs_result_total > 0 && _dfs_result_total == _dfs_result_ones[i]) {
                     continue;
                 }
                 dbg(_dfs_result_total);
                 dbg(_dfs_result_ones[i]);
-                probabilities.push_back(make_pair(0.0, points[i])); // make to pick up first
+                probabilities.push_back(make_pair(0.0, points[point_groups[i][0]])); // make to pick up first
                 break;
             }
             return;
@@ -771,23 +792,39 @@ class Solver {
 
         assert(_dfs_result_total > 0);
 
-        for (int i = 0; i < points.size(); i++) {
-            const auto& p = points[i];
-            int r, c;
-            tie(r, c) = p;
-
-            if (!grid[r][c].is_hidden()) {
-                continue;
-            }
-
-            const int count_one = _dfs_result_ones[i];
+        for(int i = 0; i < point_groups.size(); i++) {
+            const double count_one = _dfs_result_ones[i];
             const int count_all = _dfs_result_total;
-            if (!backtrace_timeout && count_one == 0) {
-                update_safe(r, c);
-            } else if (!backtrace_timeout && count_one == count_all) {
-                update_bomb(r, c);
+            if (count_one == 0) {
+                for(int j : point_groups[i]) {
+                    const auto& p = points[j];
+                    int r, c;
+                    tie(r, c) = p;
+                    if (!grid[r][c].is_hidden()) {
+                        continue;
+                    }
+                    update_safe(r, c);
+                }
+            } else if (count_one == count_all) {
+                for(int j : point_groups[i]) {
+                    const auto& p = points[j];
+                    int r, c;
+                    tie(r, c) = p;
+                    if (!grid[r][c].is_hidden()) {
+                        continue;
+                    }
+                    update_bomb(r, c);
+                }
             } else {
-                probabilities.push_back(make_pair((double)count_one/(double)count_all, p));
+                for(int j : point_groups[i]) {
+                    const auto& p = points[j];
+                    int r, c;
+                    tie(r, c) = p;
+                    if (!grid[r][c].is_hidden()) {
+                        continue;
+                    }
+                    probabilities.push_back(make_pair((double)count_one/(double)count_all, p));
+                }
             }
         }
     }
