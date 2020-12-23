@@ -26,6 +26,10 @@
 
 using namespace std;
 
+const int MAX_N = 50;
+
+const int CANCEL_LIMIT = MAX_RUNTIME / 14;
+
 /*  Written in 2019 by David Blackman and Sebastiano Vigna (vigna@acm.org)
 
 To the extent possible under law, the author has dedicated all copyright
@@ -163,10 +167,6 @@ namespace rng {
         s[3] = s3;
     }
 }
-
-const int MAX_N = 50;
-
-const int CANCEL_LIMIT = MAX_RUNTIME / 14;
 
 
 using Pos = pair<int, int>;
