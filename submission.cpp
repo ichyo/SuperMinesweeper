@@ -26,6 +26,11 @@
 
 using namespace std;
 
+const int MAX_N = 50;
+
+const int CANCEL_LIMIT = MAX_RUNTIME / 14;
+
+
 /*  Written in 2019 by David Blackman and Sebastiano Vigna (vigna@acm.org)
 
 To the extent possible under law, the author has dedicated all copyright
@@ -164,10 +169,6 @@ namespace rng {
     }
 }
 
-const int MAX_N = 50;
-
-const int CANCEL_LIMIT = MAX_RUNTIME / 14;
-
 
 using Pos = pair<int, int>;
 
@@ -256,6 +257,10 @@ struct Params {
     int N;
     int M;
     int D;
+
+    double bomb_ratio() {
+        return (double)M/N/N;
+    }
 };
 
 class Cell {
@@ -723,25 +728,6 @@ class Solver {
         }
 
 
-        /*
-        for(int i = 0; i < points.size(); i++) {
-            for (int j : p2c[i]) {
-                cerr << j << " ";
-            }
-            cerr << endl;
-        }
-        cerr << "---" << endl;
-        for(auto p : counter) {
-            if (p.second >= 2) {
-                cerr << "[";
-                for(auto x : p.first) {
-                    cerr << x << " ";
-                }
-                cerr << "] " << p.second << endl;
-            }
-        }
-        */
-
         vector<vector<int>> point_groups;
         {
             map<vector<int>, int> group_id;
@@ -758,6 +744,22 @@ class Solver {
                 point_groups[group_id[p2c[i]]].push_back(i);
             }
         }
+        sort(point_groups.begin(), point_groups.end(), [&p2c](const vector<int>& x, const vector<int>& y){
+            if (p2c[x[0]].size() != p2c[y[0]].size()) {
+                return p2c[x[0]].size() > p2c[y[0]].size();
+            }
+            return x.size() > y.size();
+        });
+
+#ifdef LOCAL
+        for(int i = 0; i < point_groups.size(); i++) {
+            cerr << "[size: " << point_groups[i].size() << "] ";
+            for (int j : p2c[point_groups[i][0]]) {
+                cerr << j << " ";
+            }
+            cerr << endl;
+        }
+#endif
 
         _dfs_p_count = vector<int>(point_groups.size());
         _dfs_p2c = vector<vector<int>>(point_groups.size());
