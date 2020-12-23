@@ -709,7 +709,7 @@ class Solver {
             }
         }
 
-        sort(points.begin(), points.end(), [&](const Pos& a, const Pos& b){
+        stable_sort(points.begin(), points.end(), [&](const Pos& a, const Pos& b){
             return occurance[a] > occurance[b];
         });
         assert(occurance[points[0]] >= occurance[points[points.size() - 1]]);
@@ -744,7 +744,7 @@ class Solver {
                 point_groups[group_id[p2c[i]]].push_back(i);
             }
         }
-        sort(point_groups.begin(), point_groups.end(), [&p2c](const vector<int>& x, const vector<int>& y){
+        stable_sort(point_groups.begin(), point_groups.end(), [&p2c](const vector<int>& x, const vector<int>& y){
             if (p2c[x[0]].size() != p2c[y[0]].size()) {
                 return p2c[x[0]].size() > p2c[y[0]].size();
             }
